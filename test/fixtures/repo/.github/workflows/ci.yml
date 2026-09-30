@@ -1,0 +1,47 @@
+name: CI
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [18, 20]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - run: npm ci
+      - run: npm test
+
+  python-job:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get install -y python3-pip cmake
+      - run: python3 -m pip install conan
+
+  container-job:
+    runs-on: ubuntu-latest
+    container: node:20
+    steps:
+      - run: node build.js
+
+  conda-job:
+    runs-on: ubuntu-24.04
+    steps:
+      - run: conda env create -f env.yml
+
+  windows-job:
+    runs-on: windows-latest
+    steps:
+      - run: echo hi
+
+  matrix-os:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-15]
+    steps:
+      - run: echo hi

@@ -1,0 +1,110 @@
+{
+  "$schemaNote": "Snapshot of actions/runner-images Ubuntu 24.04 vs 26.04 preinstalled software, used by `switchcheck ci`.",
+  "snapshotDate": "2026-09-30",
+  "sources": {
+    "ubuntu-24.04": "https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2404-Readme.md",
+    "ubuntu-26.04": "https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2604-Readme.md"
+  },
+  "latestRollout": {
+    "current": "ubuntu-24.04",
+    "target": "ubuntu-26.04",
+    "phaseStart": "2026-10-19",
+    "completeBy": "2026-11-19",
+    "note": "GitHub migrates the ubuntu-latest label to 26.04 in batches between these dates."
+  },
+  "images": {
+    "ubuntu-24.04": {
+      "osVersion": "24.04.5 LTS",
+      "kernel": "6.17-azure",
+      "systemd": "255",
+      "bash": "5.2",
+      "defaultNode": "22.23.2",
+      "defaultNpm": "10.9.8",
+      "defaultPython": "3.12.3",
+      "defaultPip": "24.0",
+      "defaultRuby": "3.2.3",
+      "perl": "5.38",
+      "php": "8.3",
+      "swift": "6.4",
+      "julia": "1.13",
+      "miniconda": true,
+      "gccVersions": ["12", "13", "14"],
+      "gccDefault": "13",
+      "clangVersions": ["16", "17", "18"],
+      "javaVersions": ["8", "11", "17", "21", "25"],
+      "javaDefault": "17",
+      "dotnetSdk": ["8", "9", "10"],
+      "docker": "28.0",
+      "dockerCompose": "2.38",
+      "podman": "4.9",
+      "helm": "3",
+      "cmake": "3.31",
+      "openssl": "3.0",
+      "jq": "1.7",
+      "toolcacheNode": ["22", "24"],
+      "toolcachePython": ["3.10", "3.11", "3.12", "3.13", "3.14"],
+      "toolcacheRuby": ["3.2", "3.3", "3.4", "4.0"]
+    },
+    "ubuntu-26.04": {
+      "osVersion": "26.04.1 LTS",
+      "kernel": "7.0-azure",
+      "systemd": "259",
+      "bash": "5.3",
+      "defaultNode": "24.21.0",
+      "defaultNpm": "11.19.0",
+      "defaultPython": "3.14.4",
+      "defaultPip": "25.1.1",
+      "defaultRuby": "3.3.8",
+      "perl": "5.40",
+      "php": "8.5",
+      "swift": null,
+      "julia": null,
+      "miniconda": false,
+      "gccVersions": ["13", "14", "15"],
+      "gccDefault": "15",
+      "clangVersions": ["20", "21", "22"],
+      "javaVersions": ["11", "17", "21", "25"],
+      "javaDefault": "25",
+      "dotnetSdk": ["8", "9", "10"],
+      "docker": "29.4",
+      "dockerCompose": "5.1",
+      "podman": "5.7",
+      "helm": "4",
+      "cmake": "4.4",
+      "openssl": "3.5",
+      "jq": "1.8",
+      "toolcacheNode": ["22", "24"],
+      "toolcachePython": ["3.10", "3.11", "3.12", "3.13", "3.14"],
+      "toolcacheRuby": ["3.2", "3.3", "3.4", "4.0"]
+    }
+  },
+  "removedIn26": [
+    "swift", "julia", "conda/miniconda (CONDA env var is empty on 26.04)",
+    "lerna", "fastlane", "mercurial (hg)", "newman", "sphinxsearch",
+    "haveged", "mediainfo", "pulumi", "parcel"
+  ],
+  "removedIn26Binaries": ["conda", "swift", "julia", "hg", "fastlane", "lerna", "newman", "pulumi", "mediainfo"],
+  "actionsRuntime": {
+    "checkedDate": "2026-09-30",
+    "node16Dead": "Actions still on the node16 runtime are already force-failed by the runner.",
+    "node20Eol": "Node.js 20 reached end-of-life on 2026-04-30; actions on the node20 runtime face the same forced migration path node16 went through.",
+    "actions": {
+      "actions/checkout":         { "latest": "v7", "runtime": { "v4": "node20", "v5": "node24", "v6": "node24", "v7": "node24" } },
+      "actions/setup-node":       { "latest": "v7", "runtime": { "v4": "node20", "v5": "node24", "v6": "node24", "v7": "node24" } },
+      "actions/setup-python":     { "latest": "v7", "runtime": { "v4": "node16", "v5": "node20", "v6": "node24", "v7": "node24" } },
+      "actions/setup-java":       { "latest": "v6", "runtime": { "v5": "node24", "v6": "node24" } },
+      "actions/setup-go":         { "latest": "v7", "runtime": { "v5": "node20", "v6": "node24", "v7": "node24" } },
+      "actions/cache":            { "latest": "v6", "runtime": { "v4": "node20", "v5": "node24", "v6": "node24" } },
+      "actions/upload-artifact":  { "latest": "v7", "runtime": { "v4": "node20", "v5": "node20", "v6": "node24", "v7": "node24" } },
+      "docker/build-push-action": { "latest": "v7", "runtime": { "v5": "node20", "v6": "node20", "v7": "node24" } }
+    }
+  },
+  "aptWatch": {
+    "nodejs": "apt's nodejs jumps majors between 24.04 and 26.04; prefer actions/setup-node for a pinned version",
+    "python3-pip": "still present, but pairs with python 3.14 instead of 3.12",
+    "default-jdk": "packages OpenJDK default changed 17 -> 25; Java 8 no longer packaged",
+    "cmake": "Ubuntu 26.04 ships CMake 4.x, which drops compatibility with cmake_minimum_required(<3.5)",
+    "php": "8.3 -> 8.5",
+    "libssl-dev": "OpenSSL 3.0 -> 3.5"
+  }
+}

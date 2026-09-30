@@ -1,0 +1,55 @@
+{
+  "$schemaNote": "Hardware -> Linux support. Used by `switchcheck linux`. First matching entry wins.",
+  "updatedAt": "2026-09-30",
+  "gpu": [
+    { "match": ["nvidia", "geforce", "rtx", "gtx", "quadro"], "name": "NVIDIA GPU", "kind": "native",
+      "note": "Works with the proprietary driver (preinstalled on Ubuntu; 'Additional Drivers' picks it). Two caveats: disable Secure Boot or enroll the MOK key it offers, and expect driver updates to lag kernel updates by days.",
+      "advice": "Install via the distro's driver manager, not NVIDIA's .run file." },
+    { "match": ["amd", "radeon", "rx "], "name": "AMD GPU", "kind": "native",
+      "note": "Best-supported vendor on Linux: the in-kernel Mesa/RADV driver just works, including Vulkan. No install needed.",
+      "advice": "For very new GPUs use the newest distro release for fresh Mesa." },
+    { "match": ["intel"], "name": "Intel GPU", "kind": "native",
+      "note": "In-kernel Mesa driver, zero setup. Arc GPUs matured a lot; newest kernels/Mesa still recommended.",
+      "advice": "" }
+  ],
+  "nic": [
+    { "match": ["intel"], "name": "Intel NIC/Wi-Fi", "kind": "native", "note": "In-kernel drivers + linux-firmware; zero setup.", "advice": "" },
+    { "match": ["realtek", "rtl8", "2.5g", "802.11"], "name": "Realtek NIC", "kind": "native",
+      "note": "Most Realtek ethernet/wifi chips are supported in-tree; some USB wi-fi dongles (8812/8821 family) need DKMS out-of-tree drivers.",
+      "advice": "USB wi-fi dongle? Search the exact chip + 'linux dkms' before switching." },
+    { "match": ["broadcom", "bcm43"], "name": "Broadcom Wi-Fi", "kind": "native",
+      "note": "Works, but needs proprietary firmware/brcm packages — the classic first-day-of-Linux headache on old MacBooks and cheap laptops.",
+      "advice": "Install broadcom-sta or brcm firmware packages from the live USB first." },
+    { "match": ["qualcomm", "atheros", "mediatek", "ralink", "killer"], "name": "Qualcomm/MediaTek NIC", "kind": "native",
+      "note": "ath9k/ath10k/ath11k and mt79xx are in-tree and generally fine.",
+      "advice": "" },
+    { "match": ["media tek", "wifi 6", "wifi 6e", "wifi 7"], "name": "Wi-Fi adapter", "kind": "native",
+      "note": "Modern wi-fi is well supported via in-tree drivers + linux-firmware; 6E/7 need recent kernels.",
+      "advice": "Run the newest LTS or rolling distro for the newest radios." }
+  ],
+  "printer": [
+    { "match": ["hp", "hewlett"], "name": "HP printer", "kind": "native",
+      "note": "First-class: HPLIP is preinstalled on major distros (printing + scanning).",
+      "advice": "" },
+    { "match": ["brother"], "name": "Brother printer", "kind": "native",
+      "note": "Brother ships official Linux drivers (deb/rpm); driverless IPP also works on recent models.",
+      "advice": "Grab the .deb from Brother's site or use IPP Everywhere." },
+    { "match": ["canon"], "name": "Canon printer", "kind": "native",
+      "note": "Canon publishes Linux drivers; scanning (scangearmp) is the flaky part. Recent models do driverless IPP.",
+      "advice": "Prefer the network/IPP path over USB for Canon." },
+    { "match": ["epson"], "name": "Epson printer", "kind": "native",
+      "note": "escpr/escpr2 drivers in distro repos; Imagescan for scanners.",
+      "advice": "" },
+    { "match": ["samsung", "xerox", "dell", "lexmark", "ricoh", "konica"], "name": "Office printer", "kind": "native",
+      "note": "All major office brands support IPP Everywhere / driverless printing on Linux today.",
+      "advice": "Add it as an IPP Everywhere printer and skip vendor drivers." },
+    { "match": ["microsoft print to pdf", "onenote", "fax"], "name": "Virtual printer", "kind": "native",
+      "note": "Every desktop ships 'Print to File' (PDF) built in.",
+      "advice": "" }
+  ],
+  "defaultPrinter": {
+    "kind": "native",
+    "note": "Modern printing is driverless (IPP Everywhere/AirPrint); unknown printers usually 'just work' over the network.",
+    "advice": "Search '<model> linux' if it is a USB-only legacy device."
+  }
+}

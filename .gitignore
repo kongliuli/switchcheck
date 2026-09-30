@@ -1,0 +1,7 @@
+node_modules/
+*.log
+switchcheck-*.md
+switchcheck-*.html
+switchcheck-*.json
+!data/*.json
+dist/

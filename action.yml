@@ -1,0 +1,18 @@
+name: 'SwitchCheck CI readiness'
+description: 'Scan GitHub Actions workflows for Ubuntu 26.04 readiness ahead of the ubuntu-latest flip (2026-10-19 → 2026-11-19).'
+branding:
+  icon: 'check-circle'
+  color: 'green'
+inputs:
+  fail-on:
+    description: 'Exit 1 on findings at this level (red | yellow | empty = never)'
+    required: false
+    default: ''
+runs:
+  using: 'composite'
+  steps:
+    - shell: bash
+      run: |
+        cd "${{ github.action_path }}"
+        npm install --omit=dev --no-fund --no-audit
+        node bin/switchcheck.js ci "${{ github.workspace }}" ${{ inputs.fail-on && format('--fail-on {0}', inputs.fail-on) || '' }}

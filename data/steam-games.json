@@ -1,0 +1,51 @@
+{
+  "$schemaNote": "Steam games -> Linux outcome. appid is matched exactly when present; name tokens are matched as substrings of the Steam library name. Entries without appid rely on name matching only.",
+  "updatedAt": "2026-09-30",
+  "kinds": {
+    "native": "green",
+    "proton": "yellow",
+    "blocked": "red"
+  },
+  "games": [
+    { "appid": "730", "name": "Counter-Strike 2", "kind": "native", "note": "Native Linux version." },
+    { "appid": "570", "name": "Dota 2", "kind": "native", "note": "Native Linux version." },
+    { "appid": "440", "name": "Team Fortress 2", "kind": "native", "note": "Native Linux version." },
+    { "appid": "413150", "name": "Stardew Valley", "kind": "native", "note": "Native Linux version." },
+    { "appid": "367520", "name": "Hollow Knight", "kind": "native", "note": "Native Linux version." },
+    { "appid": "1145360", "name": "Hades", "kind": "native", "note": "Native Linux version." },
+    { "appid": "892970", "name": "Valheim", "kind": "native", "note": "Native Linux version." },
+    { "appid": "4000", "name": "Garry's Mod", "kind": "native", "note": "Native Linux version." },
+    { "appid": "322330", "name": "Don't Starve Together", "kind": "native", "note": "Native Linux version." },
+    { "appid": "289070", "name": "Sid Meier's Civilization VI", "kind": "native", "note": "Native Linux version." },
+
+    { "appid": "1091500", "name": "Cyberpunk 2077", "kind": "proton", "note": "Steam Deck Verified via Proton; runs very well." },
+    { "appid": "1086940", "name": "Baldur's Gate 3", "kind": "proton", "note": "Steam Deck Verified via Proton." },
+    { "appid": "1245620", "name": "ELDEN RING", "kind": "proton", "note": "Steam Deck Verified via Proton." },
+    { "appid": "271590", "name": "Grand Theft Auto V", "kind": "proton", "note": "Gold on ProtonDB; online works but check current status." },
+    { "appid": "1174180", "name": "Red Dead Redemption 2", "kind": "proton", "note": "Gold on ProtonDB; Rockstar Online is playable." },
+    { "appid": "2358720", "name": "Black Myth: Wukong", "kind": "proton", "note": "Verified via Proton; heavy hardware." },
+    { "appid": "1623730", "name": "Palworld", "kind": "proton", "note": "Playable via Proton." },
+    { "appid": "230410", "name": "Warframe", "kind": "proton", "note": "Gold on ProtonDB; no native client." },
+    { "appid": "238960", "name": "Path of Exile", "kind": "proton", "note": "Gold on ProtonDB." },
+    { "appid": "236390", "name": "War Thunder", "kind": "native", "note": "Native Linux version." },
+    { "appid": "105600", "name": "Terraria", "kind": "native", "note": "Native Linux version." },
+
+    { "name": "Apex Legends", "match": ["apex"], "kind": "blocked", "note": "EA never enabled EAC for Proton — blocked on Linux.", "url": "https://areweanticheatyet.com/" },
+    { "name": "PUBG: BATTLEGROUNDS", "match": ["pubg", "battlegrounds"], "kind": "blocked", "note": "BattlEye not enabled for Linux — blocked.", "url": "https://areweanticheatyet.com/" },
+    { "name": "Destiny 2", "match": ["destiny"], "kind": "blocked", "note": "Bungie explicitly bans Linux/Proton accounts.", "url": "https://areweanticheatyet.com/" },
+    { "name": "Rainbow Six Siege (Xbox/PC)", "match": ["rainbow six", "r6 "], "kind": "proton", "note": "Ubisoft enabled BattlEye for Proton in 2025 — verify current status before ranked play.", "url": "https://areweanticheatyet.com/" },
+    { "name": "Call of Duty (modern)", "match": ["call of duty", "modern warfare", "warzone", "black ops"], "kind": "blocked", "note": "Ricochet anti-cheat blocks Linux.", "url": "https://areweanticheatyet.com/" },
+    { "name": "Escape from Tarkov", "match": ["tarkov"], "kind": "blocked", "note": "BattlEye blocks Linux.", "url": "https://areweanticheatyet.com/" },
+    { "name": "GTA Online Enhanced (2025+)", "match": ["gta online"], "kind": "proton", "note": "The enhanced BattlEye toggle works on Linux for GTA Online; verify per season.", "url": "https://areweanticheatyet.com/" },
+    { "name": "Football Manager / EA FC", "match": ["ea fc", "fifa", "football manager"], "kind": "proton", "note": "EA AC situation varies by title — check ProtonDB.", "url": "https://www.protondb.com/" },
+    { "name": "Delta Force", "match": ["delta force"], "kind": "proton", "note": "Anti-cheat situation in flux — check current status.", "url": "https://areweanticheatyet.com/" },
+    { "name": "Marvel Rivals", "match": ["marvel rivals"], "kind": "proton", "note": "Playable via Proton; performance varies." },
+    { "name": "Hunt: Showdown 1896", "match": ["hunt: showdown", "hunt showdown"], "kind": "proton", "note": "EAC enabled for Proton — works." },
+    { "name": "Rust", "match": ["rust"], "kind": "native", "note": "Native Linux version exists; EAC works with it." }
+  ],
+  "default": {
+    "kind": "proton",
+    "note": "Most Steam games run via Proton (Steam Play). Check the community rating before counting on it.",
+    "url": "https://www.protondb.com/"
+  }
+}
