@@ -25,8 +25,11 @@ jobs:
       - run: npm test
       # CSC_IDENTITY_AUTO_DISCOVERY=false → skip macOS signing when no cert is
       # configured; add CSC_LINK/CSC_KEY_PASSWORD secrets to sign + notarize.
-      - run: npx electron-builder --publish never
+      # electron-builder's github publish creates a DRAFT release and attaches
+      # the installers (all three matrix jobs attach to the same draft).
+      - run: npx electron-builder --publish always
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
       - name: Smoke test the packaged app
         shell: bash
@@ -42,16 +45,6 @@ jobs:
             EXE=$(find dist -type f -name "switchcheck" | head -1)
             xvfb-run -a "$EXE" --smoke
           fi
-      - name: Attach installers to the GitHub Release
-        uses: softprops/action-ghrelease@v2
-        with:
-          draft: true
-          files: |
-            dist/*.exe
-            dist/*.dmg
-            dist/*.zip
-            dist/*.AppImage
-            dist/*.deb
       - uses: actions/upload-artifact@v4
         if: always()
         with:
