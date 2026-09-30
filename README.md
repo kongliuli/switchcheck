@@ -1,5 +1,7 @@
 # 🚦 SwitchCheck
 
+**English** | [简体中文](README.zh-CN.md) | [日本語](README.ja.md)
+
 **Pre-flight checks before you switch environments.**
 Scan what you actually have, diff it against the target environment, and get a red / yellow / green verdict — from a CLI or a fully visual desktop app.
 
@@ -128,13 +130,7 @@ docs/ui-design-spec.md  the GUI design system & usability plan
 
 ## 中文说明
 
-SwitchCheck（换环境体检）：在切换环境之前先做一次红黄绿体检。
-
-- **桌面应用（推荐）** — `npm install && npm run gui`。全中文界面，三种体检（🐧 Windows→Linux 迁移 / ⚙️ CI→Ubuntu 26.04 / ⏱️ 运行时 EOL），目标可选本机、本地文件夹或 **SSH 远程主机**；红黄绿结论、分区统计、状态过滤、体检历史对比、一键试跑 PR、导出中文 HTML/Markdown/JSON，支持亮/暗主题与自动更新。SSH 连接管理器支持多主机保存（系统级加密）、主机指纹绑定（TOFU）、连通性测试与导入导出。
-- **分发安装包** — `npm run dist:win|dist:mac|dist:linux`，或推 `v*` 标签让 GitHub Actions 三平台自动构建并挂到 Release 草稿。mac/Linux 版本不支持“本机体检”，通过 SSH 模式体检远程 Windows 电脑。
-- **CLI** — `switchcheck linux`（Windows 上运行，含微信/QQ/钉钉/WPS/税控开票/深信服 VPN 等国内条目）；`switchcheck ci`（对照 26.04 镜像清单，`--trial` 一键试跑）；`switchcheck runtime`（Node/Python 版本停维检查）。
-
-知识库都是 `data/` 下的纯 JSON，欢迎提 PR 补充。
+完整中文文档见 [README.zh-CN.md](README.zh-CN.md)。
 
 ## License
 
