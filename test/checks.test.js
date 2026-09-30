@@ -128,15 +128,17 @@ test('runCheck never throws — a missing connection config becomes ok:false', a
 });
 
 test('local linux check path uses the injected send and reaches KB matching', async () => {
-  // On non-Windows dev machines collectAll's local runner can't run PowerShell;
-  // assert only the shape of the failure (never a throw).
-  const res = await runLinuxCheck({ target: 'local' }, { send: () => {} });
   if (process.platform !== 'win32') {
-    assert.equal(res.ok, false);
-  } else {
-    assert.equal(res.ok, true);
-    assert.equal(res.kind, 'linux');
+    // The Windows-only guard fires before any collection on mac/Linux CI.
+    await assert.rejects(
+      runLinuxCheck({ target: 'local' }, { send: () => {} }),
+      /仅支持 Windows/,
+    );
+    return;
   }
+  const res = await runLinuxCheck({ target: 'local' }, { send: () => {} });
+  assert.equal(res.ok, true);
+  assert.equal(res.kind, 'linux');
 });
 
 test('runtime check works over SSH and through runCheck dispatch', async () => {
