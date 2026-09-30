@@ -12,9 +12,9 @@ function titlesWith(scan, kb, re) {
   return sections.flatMap(s => s.findings).filter(f => re.test(f.title));
 }
 
-test('fixture repo gets the expected finding mix', () => {
+test('fixture repo gets the expected finding mix', async () => {
   const kb = loadKb();
-  const sections = checkScan(scanRepo(FIXTURE), kb);
+  const sections = checkScan(await scanRepo(FIXTURE), kb);
   const all = sections.flatMap(s => s.findings);
   const statuses = new Set(all.map(f => f.status));
 
@@ -44,9 +44,9 @@ test('fixture repo gets the expected finding mix', () => {
   assert.ok(all.some(f => f.status === 'green' && /container/.test(f.title)));
 });
 
-test('rollout timeline section always present', () => {
+test('rollout timeline section always present', async () => {
   const kb = loadKb();
-  const sections = checkScan(scanRepo(FIXTURE), kb);
+  const sections = checkScan(await scanRepo(FIXTURE), kb);
   const rollout = sections.find(s => s.name === 'Rollout timeline');
   assert.ok(rollout);
   assert.ok(rollout.findings.length >= 1);

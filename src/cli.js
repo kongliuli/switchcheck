@@ -12,6 +12,8 @@ const ciCheck = require('./ci/check');
 const { runTrial } = require('./ci/trial');
 const collect = require('./desktop/collect');
 const { checkMachine, loadKbs } = require('./desktop/check');
+const runtimeScan = require('./runtime/scan');
+const runtimeCheck = require('./runtime/check');
 
 const VERSION = require('../package.json').version;
 
@@ -70,14 +72,14 @@ function exitCodeFor(sections, failOn) {
   return 0;
 }
 
-function cmdCi(positionals, flags) {
+async function cmdCi(positionals, flags) {
   const root = path.resolve(positionals[0] || '.');
   if (!fs.existsSync(path.join(root, '.github', 'workflows'))) {
     process.stderr.write(`No .github/workflows directory found in ${root}\n`);
     return 2;
   }
   const kb = ciCheck.loadKb();
-  const scan = ciScan.scanRepo(root);
+  const scan = await ciScan.scanRepo(root);
   const sections = ciCheck.checkScan(scan, kb);
   const title = `SwitchCheck CI — Ubuntu 26.04 readiness (${kb.latestRollout.phaseStart} flip)`;
   const meta = { generatedAt: new Date().toISOString().slice(0, 10), kbDate: kb.snapshotDate };
@@ -104,7 +106,28 @@ function cmdCi(positionals, flags) {
   return exitCodeFor(sections, flags.failOn);
 }
 
-function cmdLinux(flags) {
+async function cmdRuntime(positionals, flags) {
+  const root = path.resolve(positionals[0] || '.');
+  const kb = runtimeCheck.loadKb();
+  const scan = await runtimeScan.scanRepoRuntime(root, ciScan.fsProvider);
+  const sections = runtimeCheck.checkScan(scan, kb);
+  const title = `SwitchCheck Runtime — Node/Python EOL check`;
+  const meta = { generatedAt: new Date().toISOString().slice(0, 10), kbDate: kb.snapshotDate };
+
+  if (flags.json) {
+    jsonOut('runtime', sections, { path: root });
+    return exitCodeFor(sections, flags.failOn);
+  }
+  process.stdout.write(terminal.render(title, sections) + '\n');
+  const written = writeReports(title, sections, meta, {
+    mdPath: flags.noMd ? null : (flags.md || path.join(process.cwd(), 'switchcheck-runtime-report.md')),
+    htmlPath: flags.noHtml ? null : (flags.html || path.join(process.cwd(), 'switchcheck-runtime-report.html')),
+  });
+  if (written.length) process.stdout.write(`\nReport written to ${written.join(', ')}\n`);
+  return exitCodeFor(sections, flags.failOn);
+}
+
+async function cmdLinux(flags) {
   if (process.platform !== 'win32' && !flags.from) {
     process.stderr.write('`switchcheck linux` scans a Windows machine — run it on Windows, or pass --from <collection.json>.\n');
     return 2;
@@ -114,7 +137,7 @@ function cmdLinux(flags) {
     machine = JSON.parse(fs.readFileSync(path.resolve(flags.from), 'utf8'));
   } else {
     process.stderr.write('Collecting installed software, Steam library, hardware and printers…\n');
-    machine = collect.collectAll();
+    machine = await collect.collectAll();
   }
   const kbs = loadKbs();
   const sections = checkMachine(machine, kbs);
@@ -149,6 +172,12 @@ Usage:
     --md <file> / --no-md      Markdown report path / disable (default: ./switchcheck-ci-report.md)
     --fail-on red|yellow       Exit 1 when findings at this level exist
 
+  switchcheck runtime [path]   Check declared Node/Python runtimes against EOL dates
+                               (package.json engines, .nvmrc, .node-version,
+                               .python-version, pyproject.toml)
+    --json / --md / --html / --no-md / --no-html   Output control
+    --fail-on red|yellow       Exit 1 when findings at this level exist
+
   switchcheck linux            Scan THIS Windows machine for Linux readiness
     --json                     Machine-readable JSON
     --md <file> / --html <file>  Report paths (defaults: ./switchcheck-linux-report.*)
@@ -161,7 +190,7 @@ Usage:
 Knowledge bases live in data/ and are plain JSON — send corrections as PRs.
 `;
 
-function run(argv) {
+async function run(argv) {
   const { flags, positionals } = parseArgs(argv);
   const cmd = positionals.shift();
   if (!cmd || cmd === 'help' || cmd === '--help' || cmd === '-h') {
@@ -173,6 +202,7 @@ function run(argv) {
     return 0;
   }
   if (cmd === 'ci') return cmdCi(positionals, flags);
+  if (cmd === 'runtime') return cmdRuntime(positionals, flags);
   if (cmd === 'linux') return cmdLinux(flags);
   process.stderr.write(`Unknown command "${cmd}". Run switchcheck help.\n`);
   return 2;

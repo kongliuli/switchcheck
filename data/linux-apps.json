@@ -164,7 +164,11 @@
     { "match": ["foxit"], "name": "Foxit PDF Reader", "kind": "alternative", "note": "Linux build exists but lags.", "alt": "Okular, Firefox PDF" },
     { "match": ["cajviewer"], "name": "CAJViewer (知网)", "kind": "alternative", "note": "Windows-only; CNKI web reader covers most needs.", "alt": "CNKI web, okular" },
     { "match": ["税", "开票", "发票", "报税"], "name": "Tax / invoicing software (税务/开票)", "kind": "blocked", "note": "China tax-control plugins are Windows/IE-specific — this is the #1 hard blocker for business machines in China. Keep a Windows VM or dual-boot for tax season.", "alt": "VM with Windows, or a second machine" },
-    { "match": ["网银", "usbkey", "u盾", "银行"], "name": "Banking security control (网银控件/U盾)", "kind": "blocked", "note": "USB-key drivers and ActiveX controls are Windows-only; mobile banking apps usually cover transfers.", "alt": "bank's mobile app, or Windows VM" }
+    { "match": ["网银", "usbkey", "u盾", "银行"], "name": "Banking security control (网银控件/U盾)", "kind": "blocked", "note": "USB-key drivers and ActiveX controls are Windows-only; mobile banking apps usually cover transfers.", "alt": "bank's mobile app, or Windows VM" },
+    {"match":["easyconnect","深信服"],"name":"Sangfor EasyConnect (深信服 EasyConnect)","kind":"blocked","note":"VPN 客户端依赖 Windows 内核组件，官方 Linux 版对新一代发行版基本不可用。","alt":"保留一台 Windows 设备/虚拟机跑 VPN；或询问 IT 是否支持开放协议的 SSL VPN"},
+    {"match":["microsoft pinyin","微软拼音","微软输入法"],"name":"Microsoft Pinyin (微软拼音)","kind":"alternative","note":"微软拼音没有 Linux 版。","alt":"fcitx5 + 中州韵(rime) 或 fcitx5 自带拼音","url":"https://fcitx-im.org/wiki/Fcitx"},
+    {"match":["microsoft yahei","微软雅黑","msyh"],"name":"Microsoft YaHei (微软雅黑)","kind":"alternative","note":"微软雅黑授权仅限 Windows。","alt":"思源黑体 / Noto Sans CJK SC（字形接近，开源）"},
+    {"match":["jianyingpro","剪映专业版","capcut"],"name":"CapCut / 剪映专业版","kind":"blocked","note":"没有 Linux 版，Wine 方案也不可用（依赖 Windows 多媒体组件）。"}
   ],
   "default": {
     "kind": "alternative",

@@ -8,14 +8,27 @@ const fs = require('fs');
 const path = require('path');
 const YAML = require('yaml');
 
-const WORKFLOW_DIR = path.join('.github', 'workflows');
+// A "provider" is how the scanner touches a repo: exists / readdir / readFile
+// / join. The default is the local filesystem; src/ssh.js provides an
+// equivalent SFTP-backed one so workflows on a remote host can be scanned.
 
+const fsProvider = {
+  exists: p => fs.existsSync(p),
+  readdir: p => fs.readdirSync(p),
+  readFile: p => fs.readFileSync(p, 'utf8'),
+  join: (...parts) => path.join(...parts),
+};
+
+const WORKFLOW_DIR_PARTS = ['.github', 'workflows'];
+
+// Local-fs helper (used by the CLI trial flow). scanRepo does its own
+// provider-based listing so remote repos work too.
 function listWorkflowFiles(root) {
-  const dir = path.join(root, WORKFLOW_DIR);
+  const dir = path.join(root, ...WORKFLOW_DIR_PARTS);
   if (!fs.existsSync(dir)) return [];
   return fs.readdirSync(dir)
     .filter(f => /\.ya?ml$/i.test(f))
-    .map(f => path.join(WORKFLOW_DIR, f))
+    .map(f => path.join(...WORKFLOW_DIR_PARTS, f))
     .sort();
 }
 
@@ -140,10 +153,9 @@ function expandMatrixOs(matrix) {
   return values.map(String).filter(v => !v.includes('${{'));
 }
 
-function scanWorkflow(root, relFile) {
-  const abs = path.join(root, relFile);
-  const raw = fs.readFileSync(abs, 'utf8');
-  const entry = { file: relFile.split(path.sep).join('/'), parseError: null, jobs: [] };
+async function scanWorkflow(root, relFile, provider = fsProvider) {
+  const raw = await provider.readFile(provider.join(root, relFile));
+  const entry = { file: relFile.split(/[\\/]/).join('/'), parseError: null, jobs: [] };
   let doc;
   try {
     doc = YAML.parse(raw);
@@ -213,12 +225,23 @@ function scanWorkflow(root, relFile) {
   return entry;
 }
 
-function scanRepo(root) {
-  const files = listWorkflowFiles(root);
-  return { root, workflows: files.map(f => scanWorkflow(root, f)) };
+// provider is optional — local filesystem by default; src/ssh.js supplies an
+// SFTP-backed one. Both sync and async provider methods work (awaited).
+async function scanRepo(root, provider = fsProvider) {
+  const dir = provider.join(root, ...WORKFLOW_DIR_PARTS);
+  let files = [];
+  if (await provider.exists(dir)) {
+    files = (await provider.readdir(dir))
+      .filter(f => /\.ya?ml$/i.test(f))
+      .map(f => provider.join(...WORKFLOW_DIR_PARTS, f))
+      .sort();
+  }
+  const workflows = [];
+  for (const f of files) workflows.push(await scanWorkflow(root, f, provider));
+  return { root, workflows };
 }
 
 module.exports = {
-  scanRepo, scanWorkflow, listWorkflowFiles, parseUses,
+  scanRepo, scanWorkflow, listWorkflowFiles, parseUses, fsProvider,
   detectTools, detectAptPackages, extractVersionSpecs, osLabelsFor,
 };

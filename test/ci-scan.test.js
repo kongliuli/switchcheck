@@ -37,8 +37,8 @@ test('extractVersionSpecs handles numbers, strings, arrays', () => {
   assert.deepEqual(extractVersionSpecs(null), []);
 });
 
-test('scanRepo reads the fixture workflows', () => {
-  const scan = scanRepo(FIXTURE);
+test('scanRepo reads the fixture workflows', async () => {
+  const scan = await scanRepo(FIXTURE);
   assert.equal(scan.workflows.length, 1);
   const wf = scan.workflows[0];
   assert.equal(wf.parseError, null);

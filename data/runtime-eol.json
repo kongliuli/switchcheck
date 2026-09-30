@@ -1,0 +1,28 @@
+{
+  "name": "runtime-eol",
+  "snapshotDate": "2026-09-30",
+  "description": "End-of-life dates for runtimes projects commonly pin. Dates from the official release schedules (nodejs.org, endoflife.date / python.org devguide).",
+  "runtimes": {
+    "node": {
+      "label": "Node.js",
+      "majors": {
+        "16": { "eol": "2023-09-11" },
+        "18": { "eol": "2025-04-30" },
+        "20": { "eol": "2026-04-30" },
+        "22": { "eol": "2027-04-30" },
+        "24": { "eol": "2028-04-30" }
+      }
+    },
+    "python": {
+      "label": "Python",
+      "majors": {
+        "3.8": { "eol": "2024-10-07" },
+        "3.9": { "eol": "2025-10-31" },
+        "3.10": { "eol": "2026-10-31" },
+        "3.11": { "eol": "2027-10-31" },
+        "3.12": { "eol": "2028-10-31" },
+        "3.13": { "eol": "2029-10-31" }
+      }
+    }
+  }
+}

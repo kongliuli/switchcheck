@@ -1,0 +1,56 @@
+# electron-builder config — one file, three platforms.
+# Build happens per-OS (see .github/workflows/release.yml):
+#   npx electron-builder --win | --mac | --linux
+appId: com.switchcheck.app
+productName: SwitchCheck
+directories:
+  buildResources: build
+  output: dist
+files:
+  - src
+  - data
+  - package.json
+  - "!**/*.map"
+asar: true
+# Drives app-update.yml generation for electron-updater (auto-update).
+publish:
+  provider: github
+  owner: kongliuli
+  repo: switchcheck
+
+win:
+  icon: build/icon.png
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: portable
+      arch: [x64]
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  shortcutName: SwitchCheck
+  artifactName: ${name}-${version}-setup.${ext}
+
+mac:
+  icon: build/icon.png
+  category: public.app-category.utilities
+  target:
+    - target: dmg
+      arch: [x64, arm64]
+    - target: zip
+      arch: [x64, arm64]
+  # Unsigned by default: set CSC_LINK / CSC_KEY_PASSWORD (or run on a CI with
+  # Apple certs) to sign + notarize; unsigned builds need right-click → Open.
+  identity: null
+
+linux:
+  icon: build/icon.png
+  category: Utility
+  maintainer: switchcheck <switchcheck@users.noreply.github.com>
+  target:
+    - target: AppImage
+      arch: [x64]
+    - target: deb
+      arch: [x64]

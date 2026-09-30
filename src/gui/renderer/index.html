@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self'">
+<title>SwitchCheck — 换环境体检</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div id="app">
+
+  <aside id="sidebar">
+    <div class="brand">
+      <div class="logo">🚦</div>
+      <div>
+        <div class="name">SwitchCheck</div>
+        <div class="tagline">换环境体检 · 红黄绿报告</div>
+      </div>
+    </div>
+
+    <section class="panel">
+      <h2>检查类型</h2>
+      <div class="choices" id="typeChoices">
+        <div class="choice on" data-type="linux">
+          <div class="icon">🐧</div>
+          <div>
+            <div class="t">Windows → Linux 迁移</div>
+            <div class="d">扫描已装软件、Steam 游戏、硬件、打印机</div>
+          </div>
+        </div>
+        <div class="choice" data-type="ci">
+          <div class="icon">⚙️</div>
+          <div>
+            <div class="t">CI → Ubuntu 26.04</div>
+            <div class="d">扫描仓库的 GitHub Actions workflows</div>
+          </div>
+        </div>
+        <div class="choice" data-type="runtime">
+          <div class="icon">⏱️</div>
+          <div>
+            <div class="t">运行时 EOL</div>
+            <div class="d">Node / Python 版本是否已停维或临期</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>检查目标</h2>
+
+      <!-- linux targets -->
+      <div class="choices small" id="linuxTargets">
+        <div class="choice on" data-target="local">
+          <div class="icon">💻</div>
+          <div><div class="t">这台电脑</div></div>
+        </div>
+        <div class="choice" data-target="ssh">
+          <div class="icon">🌐</div>
+          <div><div class="t">SSH 远程 Windows 主机</div></div>
+        </div>
+      </div>
+
+      <!-- ci targets -->
+      <div class="choices small" id="ciTargets" hidden>
+        <div class="choice on" data-target="local">
+          <div class="icon">📁</div>
+          <div><div class="t">本地文件夹</div></div>
+        </div>
+        <div class="choice" data-target="ssh">
+          <div class="icon">🌐</div>
+          <div><div class="t">SSH 远程主机上的仓库</div></div>
+        </div>
+      </div>
+
+      <div id="ciLocalBlock" class="subblock" hidden>
+        <label class="field">
+          <span>仓库路径</span>
+          <div class="row">
+            <input type="text" id="ciPathInput" placeholder="D:\path\to\repo">
+            <button id="ciBrowseBtn" class="ghost">浏览…</button>
+          </div>
+        </label>
+      </div>
+
+      <div id="ciRemoteBlock" class="subblock" hidden>
+        <label class="field">
+          <span>远程仓库路径</span>
+          <input type="text" id="remotePathInput" placeholder="~/my-repo 或 D:/Code/my-repo">
+        </label>
+      </div>
+
+      <div id="sshBlock" class="subblock" hidden>
+        <label class="field">
+          <span>SSH 连接</span>
+          <div class="row">
+            <select id="profileSelect"></select>
+            <button id="manageBtn" class="ghost">管理…</button>
+          </div>
+        </label>
+        <label class="field" id="sshPasswordRow">
+          <span>密码（未保存时需输入）</span>
+          <input type="password" id="sshPasswordInput" placeholder="••••••••">
+        </label>
+        <label class="field" id="sshPassphraseRow">
+          <span>私钥口令（未保存时需输入）</span>
+          <input type="password" id="sshPassphraseInput" placeholder="••••••••">
+        </label>
+        <details class="hintbox">
+          <summary>远程主机如何启用 OpenSSH 服务器？</summary>
+          <div class="hintbody">
+            目标 Windows 机器上，管理员 PowerShell 执行：<br>
+            <code>Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0</code><br>
+            <code>Start-Service sshd; Set-Service sshd -StartupType Automatic</code><br>
+            或：设置 → 应用 → 可选功能 → 添加「OpenSSH 服务器」。
+          </div>
+        </details>
+        <div class="hint" id="sshTargetHint">远程主机需为 Windows 并已启用 OpenSSH 服务器。</div>
+      </div>
+    </section>
+
+    <button id="runBtn">开始体检</button>
+
+    <section class="panel" id="progressPanel" hidden>
+      <h2>进行中</h2>
+      <div id="progressLog"></div>
+    </section>
+
+    <div class="side-actions">
+      <button id="historyBtn" class="ghost">🕘 历史记录</button>
+      <button id="updatePill" class="ghost" hidden></button>
+    </div>
+
+    <footer class="about">
+      <button id="themeBtn" class="ghost">🌗 跟随系统</button>
+      <div id="versionFoot"></div>
+    </footer>
+  </aside>
+
+  <main id="main">
+    <div id="empty">
+      <div class="big">🚦</div>
+      <h1>切换环境之前，先体检一次</h1>
+      <p>结果按 🔴 阻塞 / 🟡 需确认 / 🟢 可用 / ℹ️ 说明 分级，整体结论取最差项。</p>
+      <div class="steps">
+        <div class="step"><i>1</i><span>选择检查类型与目标</span></div>
+        <div class="step"><i>2</i><span>一键体检看红黄绿结论</span></div>
+        <div class="step"><i>3</i><span>过滤细节，导出报告</span></div>
+      </div>
+    </div>
+
+    <div id="result" hidden>
+      <div id="diffBox" class="diffbox" hidden></div>
+      <div id="verdictBanner" class="verdict">
+        <div class="v-icon" id="verdictIcon"></div>
+        <div class="v-body">
+          <div class="v-head" id="verdictHead"></div>
+          <div class="v-sub" id="verdictSub"></div>
+        </div>
+        <div class="v-stats" id="verdictStats"></div>
+      </div>
+
+      <div class="toolbar">
+        <div class="filters" id="filterChips">
+          <button data-f="all" class="on">全部<b class="count">0</b></button>
+          <button data-f="red"><span class="dot red"></span>阻塞<b class="count">0</b></button>
+          <button data-f="yellow"><span class="dot yellow"></span>需确认<b class="count">0</b></button>
+          <button data-f="green"><span class="dot green"></span>可用<b class="count">0</b></button>
+          <button data-f="info"><span class="dot info"></span>说明<b class="count">0</b></button>
+        </div>
+        <div class="exports">
+          <button id="trialBtn" hidden title="创建一个把 Ubuntu job 钉到 26.04 的分支并开 PR（需要 gh）">创建试跑 PR</button>
+          <button id="exportHtml" class="ghost">导出 HTML</button>
+          <button id="exportMd" class="ghost">导出 Markdown</button>
+          <button id="exportJson" class="ghost">导出 JSON</button>
+        </div>
+      </div>
+
+      <div id="sections"></div>
+    </div>
+
+    <div id="errorBox" class="error" hidden></div>
+  </main>
+</div>
+
+<div id="modalRoot"></div>
+
+<script src="../../labels.js"></script>
+<script src="mock-api.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
