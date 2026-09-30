@@ -113,7 +113,7 @@ if (!window.api) {
     ],
     verdict: { status: 'red', headline: '未就绪 — 存在阻塞项' },
     counts: { red: 1, yellow: 1, green: 2, info: 0 },
-    meta: { generatedAt: '2026-09-30', kbDate: '2026-09-30', version: '0.2.0' },
+    meta: { generatedAt: '2026-09-30', kbDate: '2026-09-30', version: '0.3.0' },
   };
 
   const PROFILES = [
@@ -149,16 +149,21 @@ if (!window.api) {
     async startCheck(opts) {
       const ci = opts.type === 'ci';
       const rt = opts.type === 'runtime';
+      const M = {
+        zh: { connect: '正在连接 192.168.1.23:22 …', connected: 'SSH 已连接', scanCi: '正在读取远程 .github/workflows …', scanRt: '正在读取运行时声明文件 …', parse: rt ? '解析版本声明…' : '解析 workflow 文件…', matchCi: '正在对照 Ubuntu 26.04 镜像清单…', matchRt: '正在对照运行时 EOL 知识库…', c1: '正在采集：已安装软件…', c2: '正在采集：Steam 库…', c3: '正在采集：硬件…', c4: '正在采集：打印机…' },
+        en: { connect: 'Connecting to 192.168.1.23:22 …', connected: 'SSH connected', scanCi: 'Reading remote .github/workflows …', scanRt: 'Reading runtime declaration files …', parse: rt ? 'Parsing version declarations…' : 'Parsing workflow files…', matchCi: 'Comparing against the Ubuntu 26.04 manifest…', matchRt: 'Comparing against the runtime EOL KB…', c1: 'Collecting: installed software…', c2: 'Collecting: Steam library…', c3: 'Collecting: hardware…', c4: 'Collecting: printers…' },
+        ja: { connect: '192.168.1.23:22 に接続中 …', connected: 'SSH 接続完了', scanCi: 'リモートの .github/workflows を読み込み中 …', scanRt: 'ランタイム宣言ファイルを読み込み中 …', parse: rt ? 'バージョン宣言を解析中…' : 'workflow ファイルを解析中…', matchCi: 'Ubuntu 26.04 マニフェストと照合中…', matchRt: 'ランタイム EOL ナレッジベースと照合中…', c1: '収集：インストール済みソフト…', c2: '収集：Steam ライブラリ…', c3: '収集：ハードウェア…', c4: '収集：プリンター…' },
+      }[opts.lang || 'zh'];
       const steps = opts.target === 'ssh'
-        ? [['connect', '正在连接 192.168.1.23:22 …'], ['connect', 'SSH 已连接'],
-           ['scan', rt ? '正在读取远程运行时声明文件 …' : '正在读取远程 .github/workflows …'],
-           ['collect', rt ? '解析版本声明…' : '解析 workflow 文件…'],
-           ['match', rt ? '正在对照运行时 EOL 知识库…' : '正在对照 Ubuntu 26.04 镜像清单…']]
+        ? [['connect', M.connect], ['connect', M.connected],
+           ['scan', rt ? M.scanRt : M.scanCi],
+           ['collect', M.parse],
+           ['match', rt ? M.matchRt : M.matchCi]]
         : rt
-          ? [['scan', '正在读取运行时声明文件 …'], ['match', '正在对照运行时 EOL 知识库…']]
+          ? [['scan', M.scanRt], ['match', M.matchRt]]
           : ci
-            ? [['scan', '正在读取 .github/workflows …'], ['match', '正在对照 Ubuntu 26.04 镜像清单…']]
-            : [['collect', '正在采集：已安装软件…'], ['collect', '正在采集：Steam 库…'], ['collect', '正在采集：硬件…'], ['collect', '正在采集：打印机…']];
+            ? [['scan', M.scanCi.replace('remote ', '')], ['match', M.matchCi]]
+            : [['collect', M.c1], ['collect', M.c2], ['collect', M.c3], ['collect', M.c4]];
       for (const [stage, msg] of steps) {
         await sleep(350);
         window.api.__emit({ stage, message: msg });

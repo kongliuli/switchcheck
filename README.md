@@ -10,7 +10,7 @@ Scan what you actually have, diff it against the target environment, and get a r
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 ![Node](https://img.shields.io/badge/node-%E2%89%A518-blue)
 
-![SwitchCheck 主界面](docs/screenshot-home.png)
+![SwitchCheck main window (English)](docs/screenshot-home-en.png)
 
 Three switches people are forced through — SwitchCheck answers *"will **my** stuff survive it?"* before you flip:
 
@@ -26,14 +26,14 @@ All three are the same machine underneath: `scan(source) × knowledge-base(targe
 
 ## 🖥️ Desktop app
 
-![CI 体检结果](docs/screenshot-ci.png)
+![CI check results (English UI)](docs/screenshot-ci-en.png)
 
 ```bash
 npm install
 npm run gui
 ```
 
-A fully visual, Chinese-first desktop app (light/dark) on the same engine as the CLI:
+A fully visual desktop app (light/dark, 简体中文/English/日本語) on the same engine as the CLI:
 
 - **Three checks, one window** — pick the type, pick the target, one click.
 - **Any target, local or SSH** — scan this machine, a local folder, or a remote Windows/Linux host over SSH with live progress.
@@ -42,7 +42,8 @@ A fully visual, Chinese-first desktop app (light/dark) on the same engine as the
 - **体检历史** — every check is saved locally; open an old report and diff it against the previous run (新增 / 已解决).
 - **创建试跑 PR** — after a local CI check, one click opens a PR that pins `ubuntu-26.04`, so CI itself proves the migration.
 - **Auto-update** — background check, silent download, one-click restart (GitHub Releases).
-- Export any report as Chinese **HTML**, Markdown, or JSON.
+- **Trilingual UI** — 简体中文 / English / 日本語, switchable in-app; exports follow the UI language.
+- Export reports as **HTML** (localized), Markdown, or JSON.
 
 Installers for **Windows / macOS / Linux** are attached to each [release](https://github.com/kongliuli/switchcheck/releases) (draft until reviewed) — or build your own with `npm run dist:win|dist:mac|dist:linux`.
 

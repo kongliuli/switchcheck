@@ -7,19 +7,25 @@ const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 
 const L = window.SC_LABELS;
-const SECTION_ZH = L.SECTION_ZH;
-const STATUS_ZH = L.STATUS_ZH;
-const STATUS_ORDER = L.STATUS_ORDER;
-const VERDICT_ICON = L.VERDICT_ICON;
-const KIND_ICON = L.KIND_ICON;
+const STATUS_ORDER = { red: 0, yellow: 1, green: 2, info: 3 };
 
-// The local Windows→Linux scan needs Windows PowerShell; on a mac/Linux
-// desktop only the SSH mode makes sense, so hide the local target there.
-const IS_WIN = /win/i.test(navigator.platform || '');
+// ------------------------------------------------------------------ i18n --
+
+function detectLang() {
+  try {
+    const saved = localStorage.getItem('sc-lang');
+    if (saved && L.LANGS.includes(saved)) return saved;
+  } catch { /* private mode */ }
+  const nav = (navigator.language || 'en').toLowerCase();
+  if (nav.startsWith('zh')) return 'zh';
+  if (nav.startsWith('ja')) return 'ja';
+  return 'en';
+}
 
 const state = {
   type: 'linux',
   target: 'local',
+  lang: detectLang(),
   profiles: [],
   safeStorage: true,
   result: null,
@@ -27,6 +33,25 @@ const state = {
   running: false,
   lastOpts: null, // what produced state.result — the trial button reuses it
 };
+
+const T = L.STR[state.lang] || L.STR.zh;
+const t = key => (T.ui[key] !== undefined ? T.ui[key] : key);
+const fmt = (str, map) => String(str).replace(/\{(\w+)\}/g, (_, k) => (map[k] !== undefined ? map[k] : ''));
+
+function applyI18n() {
+  document.documentElement.lang = state.lang === 'zh' ? 'zh-CN' : state.lang;
+  document.title = `SwitchCheck — ${T.ui.tagline.split(' · ')[0]}`;
+  $$('[data-i18n]').forEach(e => { e.textContent = t(e.dataset.i18n); });
+  $$('[data-i18n-status]').forEach(e => { e.textContent = T.status[e.dataset.i18nStatus]; });
+  $$('[data-i18n-title]').forEach(e => { e.title = t(e.dataset.i18nTitle); });
+  $('#langBtn').textContent = `🌐 ${T.ui.langName}`;
+  applyTheme();
+  setRunLabel();
+}
+
+// The local Windows→Linux scan needs Windows PowerShell; on a mac/Linux
+// desktop only the SSH mode makes sense, so hide the local target there.
+const IS_WIN = /win/i.test(navigator.platform || '');
 
 function el(tag, cls, text) {
   const e = document.createElement(tag);
@@ -41,25 +66,13 @@ function rememberSelection() {
 
 // ---------------------------------------------------------------- sidebar --
 
-function syncRadios(groupSel, value) {
-  const group = $(groupSel);
-  if (!group) return;
-  [...group.querySelectorAll('.choice')].forEach(c => {
-    const on = c.dataset.type === value || c.dataset.target === value;
-    c.classList.toggle('on', on);
-    c.setAttribute('aria-checked', on ? 'true' : 'false');
-  });
-}
-
 function setType(type) {
   state.type = type;
   syncRadios('#typeChoices', type);
   const repoLike = type === 'ci' || type === 'runtime';
   $('#linuxTargets').hidden = type !== 'linux';
   $('#ciTargets').hidden = !repoLike;
-  $('#sshTargetHint').textContent = type === 'linux'
-    ? '远程主机需为 Windows 并已启用 OpenSSH 服务器。'
-    : '远程主机可以是 Windows 或 Linux，通过 SFTP 读取仓库文件。';
+  $('#sshTargetHint').textContent = type === 'linux' ? t('hintLinux') : t('hintRepo');
   if (type === 'linux' && !IS_WIN) {
     $('#linuxTargets .choice[data-target="local"]').hidden = true;
     if (state.target === 'local') state.target = 'ssh';
@@ -67,8 +80,7 @@ function setType(type) {
     $('#linuxTargets .choice[data-target="local"]').hidden = false;
   }
   setTarget(state.target);
-  $('#runBtn').textContent = type === 'ci' ? '开始 CI 体检'
-    : type === 'runtime' ? '开始运行时体检' : '开始体检';
+  setRunLabel();
   rememberSelection();
 }
 
@@ -82,6 +94,16 @@ function setTarget(target) {
   rememberSelection();
 }
 
+function syncRadios(groupSel, value) {
+  const group = $(groupSel);
+  if (!group) return;
+  [...group.querySelectorAll('.choice')].forEach(c => {
+    const on = c.dataset.type === value || c.dataset.target === value;
+    c.classList.toggle('on', on);
+    c.setAttribute('aria-checked', on ? 'true' : 'false');
+  });
+}
+
 async function loadProfiles() {
   const { profiles, safeStorage } = await window.api.listProfiles();
   state.profiles = profiles;
@@ -90,7 +112,7 @@ async function loadProfiles() {
   const prev = sel.value;
   sel.textContent = '';
   if (!profiles.length) {
-    sel.append(el('option', null, '（尚未配置连接）'));
+    sel.append(el('option', null, t('noProfiles')));
   }
   for (const p of profiles) {
     const o = el('option', null, `${p.name}（${p.username}@${p.host}）`);
@@ -117,9 +139,9 @@ function updateSecretRows() {
 function progressLine(message, cls) {
   const panel = $('#progressPanel');
   panel.hidden = false;
-  const t = new Date().toTimeString().slice(0, 8);
+  const time = new Date().toTimeString().slice(0, 8);
   const line = el('div', 'line' + (cls ? ` ${cls}` : ''));
-  line.append(el('span', 'ts', `[${t}]`));
+  line.append(el('span', 'ts', `[${time}]`));
   line.append(el('span', null, message));
   $('#progressLog').append(line);
   panel.scrollIntoView({ block: 'nearest' });
@@ -131,10 +153,10 @@ function progressLine(message, cls) {
 async function run() {
   if (state.running) return;
   if (state.target === 'ssh' && !selectedProfile()) {
-    return showError('请先在「SSH 连接」中选择一个连接配置（点「管理…」可新建）。');
+    return showError(t('errNoProfile'));
   }
   if (state.type !== 'linux' && state.target === 'local' && !$('#ciPathInput').value.trim()) {
-    return showError('请填写或选择本地仓库路径。');
+    return showError(t('errNoPath'));
   }
   hideError();
   state.running = true;
@@ -143,12 +165,13 @@ async function run() {
   const btn = $('#runBtn');
   btn.disabled = true;
   btn.classList.add('running');
-  btn.textContent = '体检中…';
+  btn.textContent = t('running');
   $('#progressLog').textContent = '';
 
   const opts = {
     type: state.type,
     target: state.target,
+    lang: state.lang,
     profileId: $('#profileSelect').value,
     password: $('#sshPasswordInput').value,
     passphrase: $('#sshPassphraseInput').value,
@@ -161,9 +184,9 @@ async function run() {
   try {
     const result = await window.api.startCheck(opts);
     if (!result.ok) {
-      showError(result.error || '体检失败');
+      showError(result.error || t('errRun'));
     } else {
-      progressLine('体检完成', 'ok');
+      progressLine(t('done'), 'ok');
       renderResult(result);
       $('#main').scrollTop = 0;
     }
@@ -179,11 +202,17 @@ async function run() {
 }
 
 function setRunLabel() {
-  $('#runBtn').textContent = state.type === 'ci' ? '开始 CI 体检'
-    : state.type === 'runtime' ? '开始运行时体检' : '开始体检';
+  $('#runBtn').textContent = state.running ? t('running')
+    : state.type === 'ci' ? t('runCi')
+    : state.type === 'runtime' ? t('runRuntime') : t('run');
 }
 
 // ---------------------------------------------------------------- result --
+
+function resultTitle(result) {
+  const kind = T.kind[result.kind] || result.kind;
+  return `SwitchCheck ${kind} — ${result.host}`;
+}
 
 function renderResult(result, opts = {}) {
   state.result = result;
@@ -195,15 +224,16 @@ function renderResult(result, opts = {}) {
   const c = result.counts;
   const box = $('#verdictBanner');
   box.className = `verdict ${v.status}`;
-  $('#verdictIcon').textContent = VERDICT_ICON[v.status] || '🚦';
-  $('#verdictHead').textContent = v.headline;
+  $('#verdictIcon').textContent = T.verdictIcon[v.status] || '🚦';
+  $('#verdictHead').textContent = T.verdict[v.status] || v.headline;
   const target = opts.targetLabel
     || (state.target === 'ssh'
-      ? `SSH:${selectedProfile() ? selectedProfile().name : result.host}`
+      ? `${t('sshPrefix')}${selectedProfile() ? selectedProfile().name : result.host}`
       : result.host);
+  const when = opts.at ? `${t('checkedAt')} ${opts.at.slice(0, 10)}` : `${t('generatedAt')} ${result.meta.generatedAt}`;
   $('#verdictSub').textContent =
-    `${target} · ${opts.at ? '体检于 ' + opts.at.slice(0, 10) : '生成于 ' + result.meta.generatedAt}` +
-    `${result.meta.kbDate ? ` · 知识库快照 ${result.meta.kbDate}` : ''}`;
+    `${target} · ${when}` +
+    `${result.meta.kbDate ? ` · ${t('kbSnapshot')} ${result.meta.kbDate}` : ''}`;
   if (opts.diffHtml) {
     const d = $('#diffBox');
     d.textContent = '';
@@ -216,7 +246,7 @@ function renderResult(result, opts = {}) {
     const pill = el('span', 'stat');
     pill.append(el('span', `dot ${s}`));
     pill.append(el('b', null, String(c[s] || 0)));
-    pill.append(el('span', null, STATUS_ZH[s]));
+    pill.append(el('span', null, T.status[s]));
     stats.append(pill);
   }
   updateChipCounts(c);
@@ -227,14 +257,14 @@ function renderResult(result, opts = {}) {
   wrap.textContent = '';
   const visible = result.sections.filter(s => s.findings.length);
   if (!visible.length) {
-    wrap.append(el('div', 'empty-note', '体检完成 —— 没有发现任何条目。'));
+    wrap.append(el('div', 'empty-note', t('noFindings')));
   }
   for (const section of visible) {
     const sorted = [...section.findings].sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status]);
     const det = el('details', 'check-section');
     if (sorted.some(f => f.status === 'red' || f.status === 'yellow')) det.open = true;
     const counts = section.findings.reduce((m, f) => (m[f.status] = (m[f.status] || 0) + 1, m), {});
-    const sum = el('summary', null, SECTION_ZH[section.name] || section.name);
+    const sum = el('summary', null, T.section[section.name] || section.name);
     const sc = el('span', 'sec-counts');
     for (const s of ['red', 'yellow', 'green', 'info']) {
       if (!counts[s]) continue;
@@ -256,11 +286,11 @@ function renderResult(result, opts = {}) {
 function findingItem(f) {
   const li = el('li', 'item');
   li.dataset.status = f.status;
-  li.append(el('span', `badge ${f.status}`, STATUS_ZH[f.status]));
+  li.append(el('span', `badge ${f.status}`, T.status[f.status]));
   const body = el('div');
   const title = el('div', 't', f.title);
   if (f.url) {
-    const a = el('a', null, '参考 ↗');
+    const a = el('a', null, t('reference'));
     a.href = f.url;
     a.addEventListener('click', ev => {
       ev.preventDefault();
@@ -273,13 +303,13 @@ function findingItem(f) {
   if (f.advice) body.append(el('div', 'a', f.advice));
   li.append(body);
   const copy = el('button', 'ghost copy-btn', '⧉');
-  copy.title = '复制这条建议';
-  copy.setAttribute('aria-label', '复制这条建议');
+  copy.title = t('copyTip');
+  copy.setAttribute('aria-label', t('copyTip'));
   copy.addEventListener('click', async () => {
-    const text = [f.title, f.detail, f.advice ? `建议：${f.advice}` : ''].filter(Boolean).join('\n');
+    const text = [f.title, f.detail, f.advice ? `${t('advicePrefix')}${f.advice}` : ''].filter(Boolean).join('\n');
     try {
       await navigator.clipboard.writeText(text);
-      copy.textContent = '✓';
+      copy.textContent = t('copied');
       setTimeout(() => { copy.textContent = '⧉'; }, 900);
     } catch { /* clipboard denied */ }
   });
@@ -311,6 +341,7 @@ function showError(msg) {
   const box = $('#errorBox');
   box.textContent = `⚠️ ${msg}`;
   box.hidden = false;
+  box.scrollIntoView({ block: 'nearest' });
 }
 
 function hideError() {
@@ -324,17 +355,18 @@ async function exportReport(format) {
   if (!r) return;
   const suggested = `switchcheck-${r.kind}-report-${r.meta.generatedAt}`;
   const path = await window.api.saveReport({
-    format, title: r.title, sections: r.sections, meta: r.meta, suggestedName: suggested,
+    format, title: resultTitle(r), sections: r.sections, meta: r.meta,
+    suggestedName: suggested, lang: state.lang,
   });
-  if (path) progressLine(`已导出：${format.toUpperCase()} → ${path}`, 'ok');
+  if (path) progressLine(fmt(t('exportedLine'), { fmt: format.toUpperCase(), path }), 'ok');
 }
 
 async function runTrialFromGui() {
   if (!state.lastOpts || state.lastOpts.type !== 'ci') return;
   const ok = await confirmDialog({
-    title: '创建试跑 PR',
-    message: '将在仓库中创建一个分支（把 Ubuntu job 钉到 ubuntu-26.04），并尝试通过 gh 打开 PR，让 CI 先用 26.04 试跑。继续吗？',
-    confirmText: '创建 PR',
+    title: t('trialConfirmTitle'),
+    message: t('trialConfirmMsg'),
+    confirmText: t('trialConfirmOk'),
   });
   if (!ok) return;
   await window.api.runTrial({
@@ -357,13 +389,14 @@ function diffAgainst(prevResult, curResult) {
 
 function diffHtml(prevAt, diff) {
   const box = el('div');
-  box.append(el('div', 'diff-head',
-    `与上次体检（${prevAt.slice(0, 10)}）对比:新增 ${diff.fresh.length} 项 · 已解决 ${diff.resolved.length} 项`));
+  box.append(el('div', 'diff-head', fmt(t('diffHead'), {
+    date: prevAt.slice(0, 10), n: diff.fresh.length, m: diff.resolved.length,
+  })));
   const list = el('div', 'diff-list');
   for (const f of diff.fresh.slice(0, 10)) {
     const row = el('div', 'diff-row');
-    row.append(el('span', `badge ${f.status}`, STATUS_ZH[f.status]));
-    row.append(el('span', null, `新增:${f.title}`));
+    row.append(el('span', `badge ${f.status}`, T.status[f.status]));
+    row.append(el('span', null, fmt(t('diffNew'), { title: f.title })));
     list.append(row);
   }
   for (const f of diff.resolved.slice(0, 10)) {
@@ -398,24 +431,24 @@ async function loadHistoryEntry(id) {
 
 async function openHistory() {
   const modal = el('div');
-  modal.append(el('h3', null, '体检历史'));
+  modal.append(el('h3', null, t('historyTitle')));
 
   const listWrap = el('div');
   modal.append(listWrap);
 
   const actions = el('div', 'actions');
-  const clearBtn = el('button', 'ghost danger', '清空历史');
+  const clearBtn = el('button', 'ghost danger', t('clearHistory'));
   clearBtn.addEventListener('click', async () => {
     if (!(await confirmDialog({
-      title: '清空体检历史',
-      message: '所有历史记录将被删除，且无法恢复。',
-      confirmText: '清空',
+      title: t('clearHistTitle'),
+      message: t('clearHistMsg'),
+      confirmText: t('clear'),
       danger: true,
     }))) return;
     await window.api.historyClear();
     await renderList();
   });
-  const closeBtn = el('button', null, '关闭');
+  const closeBtn = el('button', null, t('close'));
   closeBtn.addEventListener('click', closeModal);
   actions.append(clearBtn, closeBtn);
   modal.append(actions);
@@ -425,17 +458,17 @@ async function openHistory() {
     listWrap.textContent = '';
     const entries = await window.api.historyList();
     if (!entries.length) {
-      listWrap.append(el('div', 'hint', '还没有体检记录。跑一次体检后可以在这里回顾和对比。'));
+      listWrap.append(el('div', 'hint', t('noHistory')));
     }
     for (const e of entries) {
       const row = el('div', 'profile-row');
       const meta = el('div', 'meta');
-      meta.append(el('div', 'n', `${KIND_ICON[e.kind] || '🚦'} ${L.KIND_ZH[e.kind] || e.kind} — ${e.host}`));
+      meta.append(el('div', 'n', `${T.kindIcon[e.kind] || '🚦'} ${T.kind[e.kind] || e.kind} — ${e.host}`));
       meta.append(el('div', 'h', `${e.at.slice(0, 16).replace('T', ' ')}`));
       row.append(meta);
-      const pill = el('span', `badge ${e.verdict}`, STATUS_ZH[e.verdict] || e.verdict);
+      const pill = el('span', `badge ${e.verdict}`, T.status[e.verdict] || e.verdict);
       row.append(pill);
-      const load = el('button', 'ghost', '打开');
+      const load = el('button', 'ghost', t('open'));
       load.addEventListener('click', async () => {
         closeModal();
         await loadHistoryEntry(e.id);
@@ -447,8 +480,6 @@ async function openHistory() {
 
   renderList();
 }
-
-// ----------------------------------------------------------------- modal --
 
 // ------------------------------------------------- modal infrastructure --
 
@@ -493,7 +524,7 @@ function closeModal() {
 }
 
 // Promise-based confirmation for destructive / outward-facing actions.
-function confirmDialog({ title, message, confirmText = '确定', danger = false }) {
+function confirmDialog({ title, message, confirmText = 'OK', danger = false }) {
   return new Promise(resolve => {
     const modal = el('div');
     modal.append(
@@ -501,7 +532,7 @@ function confirmDialog({ title, message, confirmText = '确定', danger = false 
       el('p', 'confirm-msg', message),
     );
     const actions = el('div', 'actions');
-    const cancelBtn = el('button', null, '取消');
+    const cancelBtn = el('button', null, t('cancel'));
     const okBtn = el('button', danger ? 'primary danger' : 'primary', confirmText);
     const done = v => { closeModal(); resolve(v); };
     cancelBtn.addEventListener('click', () => done(false));
@@ -515,7 +546,7 @@ function confirmDialog({ title, message, confirmText = '确定', danger = false 
 
 function openManager() {
   const modal = el('div');
-  modal.append(el('h3', null, 'SSH 连接管理'));
+  modal.append(el('h3', null, t('managerTitle')));
 
   const list = el('div');
   modal.append(list);
@@ -524,47 +555,46 @@ function openManager() {
   form.hidden = true;
 
   const f = {};
-  const field = (key, label, cls, ...rest) => {
+  const field = (key, labelKey, cls, kind, placeholder) => {
     const wrap = el('label', 'field' + (cls === 'full' ? ' full' : ''));
-    wrap.append(el('span', null, label));
-    if (rest[0] === 'select') {
+    wrap.append(el('span', null, t(labelKey)));
+    if (kind === 'select') {
       f[key] = el('select');
-      for (const [v, t] of [['password', '密码'], ['key', '私钥文件']]) {
-        const o = el('option', null, t);
+      for (const [v, key2] of [['password', 'authPassword'], ['key', 'authKey']]) {
+        const o = el('option', null, t(key2));
         o.value = v;
         f[key].append(o);
       }
-    } else if (rest[0] === 'checkbox') {
+    } else if (kind === 'checkbox') {
       f[key] = el('input');
       f[key].type = 'checkbox';
       const row = el('span', null);
       row.append(f[key]);
-      row.append(document.createTextNode(rest[1] || ''));
       wrap.textContent = '';
-      wrap.append(el('span', null, label), row);
+      wrap.append(el('span', null, t(labelKey)), row);
     } else {
       f[key] = el('input');
-      f[key].type = rest[0] === 'password' ? 'password' : 'text';
-      if (rest[1]) f[key].placeholder = rest[1];
+      f[key].type = kind === 'password' ? 'password' : 'text';
+      if (placeholder) f[key].placeholder = placeholder;
     }
     wrap.append(f[key]);
     return wrap;
   };
 
   form.append(
-    field('name', '名称', null, 'text', '办公室台式机'),
-    field('host', '主机地址', null, 'text', '192.168.1.23 或 build.example.com'),
-    field('port', '端口', null, 'text', '22'),
-    field('username', '用户名', null, 'text', 'Administrator'),
-    field('authType', '认证方式', null, 'select'),
+    field('name', 'fName', null, 'text'),
+    field('host', 'fHost', null, 'text', '192.168.1.23'),
+    field('port', 'fPort', null, 'text', '22'),
+    field('username', 'fUser', null, 'text', 'Administrator'),
+    field('authType', 'fAuth', null, 'select'),
     (() => {
       const wrap = el('label', 'field');
-      wrap.append(el('span', null, '私钥文件路径'));
+      wrap.append(el('span', null, t('fKeyPath')));
       const row = el('div', 'row');
       f.keyPath = el('input');
       f.keyPath.type = 'text';
-      f.keyPath.placeholder = 'C:\\Users\\me\\.ssh\\id_ed25519';
-      const browse = el('button', 'ghost', '浏览…');
+      f.keyPath.placeholder = 'C:/Users/me/.ssh/id_ed25519';
+      const browse = el('button', 'ghost', t('browse'));
       browse.addEventListener('click', async () => {
         const p = await window.api.pickKeyFile();
         if (p) f.keyPath.value = p;
@@ -573,14 +603,14 @@ function openManager() {
       wrap.append(row);
       return wrap;
     })(),
-    field('password', '密码', null, 'password'),
-    field('keyPassphrase', '私钥口令（可选）', null, 'password'),
-    field('rememberPassword', '把密码/口令加密保存在本机', 'full', 'checkbox'),
+    field('password', 'fPassword', null, 'password'),
+    field('keyPassphrase', 'fKeyPass', null, 'password'),
+    field('rememberPassword', 'remember', 'full', 'checkbox'),
   );
 
   const formActions = el('div', 'actions');
-  const saveBtn = el('button', 'primary', '保存连接');
-  const cancelBtn = el('button', null, '取消');
+  const saveBtn = el('button', 'primary', t('saveConn'));
+  const cancelBtn = el('button', null, t('cancel'));
   cancelBtn.addEventListener('click', () => { form.hidden = true; });
   saveBtn.addEventListener('click', async () => {
     try {
@@ -612,15 +642,15 @@ function openManager() {
   testResult.className = 'test-fail';
 
   const actions = el('div', 'actions');
-  const importBtn = el('button', 'ghost', '导入…');
-  const exportBtn = el('button', 'ghost', '导出…');
-  const newBtn = el('button', 'ghost', '＋ 新建连接');
-  const closeBtn = el('button', null, '关闭');
+  const importBtn = el('button', 'ghost', t('importBtn'));
+  const exportBtn = el('button', 'ghost', t('exportBtn'));
+  const newBtn = el('button', 'ghost', t('newConn'));
+  const closeBtn = el('button', null, t('close'));
   importBtn.addEventListener('click', async () => {
     const r = await window.api.importProfiles();
     if (r) {
       testResult.className = 'test-ok';
-      testResult.textContent = `已导入 ${r.added} 个连接${r.skipped ? `，跳过重复 ${r.skipped} 个` : ''}。`;
+      testResult.textContent = fmt(t('imported'), { n: r.added, s: r.skipped });
       await loadProfiles();
       await renderList();
     }
@@ -629,7 +659,7 @@ function openManager() {
     const path = await window.api.exportProfiles();
     if (path) {
       testResult.className = 'test-ok';
-      testResult.textContent = `已导出（不含密钥）→ ${path}`;
+      testResult.textContent = fmt(t('exported'), { path });
     }
   });
   newBtn.addEventListener('click', () => {
@@ -653,14 +683,14 @@ function openManager() {
     const { profiles } = await window.api.listProfiles();
     state.profiles = profiles;
     if (!profiles.length) {
-      list.append(el('div', 'hint', '还没有连接配置。点「＋ 新建连接」添加一台远程主机。'));
+      list.append(el('div', 'hint', t('noProfiles')));
     }
     for (const p of profiles) {
       const row = el('div', 'profile-row');
       const meta = el('div', 'meta');
       meta.append(el('div', 'n', p.name));
-      const secretNote = p.authType === 'key' ? '私钥' : '密码';
-      const stored = p.hasPassword || p.hasKeyPassphrase ? ' · 已存密' : '';
+      const secretNote = p.authType === 'key' ? t('authKey') : t('authPassword');
+      const stored = p.hasPassword || p.hasKeyPassphrase ? ' · 🔒' : '';
       meta.append(el('div', 'h', `${p.username}@${p.host}:${p.port} · ${secretNote}${stored}`));
       if (p.hostFingerprint) {
         meta.append(el('div', 'h fp', `🔑 ${p.hostFingerprint}`));
@@ -668,9 +698,9 @@ function openManager() {
       row.append(meta);
       const status = el('span');
       status.setAttribute('aria-live', 'polite');
-      const test = el('button', 'ghost', '测试');
+      const test = el('button', 'ghost', t('test'));
       test.addEventListener('click', async () => {
-        status.textContent = '测试中…';
+        status.textContent = t('testing');
         status.className = '';
         test.disabled = true;
         try {
@@ -681,13 +711,13 @@ function openManager() {
           });
           status.className = r.ok ? 'test-ok' : 'test-fail';
           status.textContent = r.ok
-            ? { windows: '✓ 可连接（Windows）', unix: '✓ 可连接（Linux/Unix）' }[r.platform] || '✓ 可连接'
+            ? { windows: t('testOkWin'), unix: t('testOkUnix') }[r.platform] || '✓'
             : `✗ ${r.error}`;
         } finally {
           test.disabled = false;
         }
       });
-      const edit = el('button', 'ghost', '编辑');
+      const edit = el('button', 'ghost', t('edit'));
       edit.addEventListener('click', () => {
         form.dataset.editId = p.id;
         f.name.value = p.name;
@@ -702,12 +732,12 @@ function openManager() {
         form.hidden = false;
         testResult.textContent = '';
       });
-      const del = el('button', 'ghost danger', '删除');
+      const del = el('button', 'ghost danger', t('del'));
       del.addEventListener('click', async () => {
         if (!(await confirmDialog({
-          title: `删除「${p.name}」`,
-          message: '连接配置将被删除，保存在本机的密码/口令也会一并清除。',
-          confirmText: '删除',
+          title: fmt(t('delTitle'), { name: p.name }),
+          message: t('delMsg'),
+          confirmText: t('del'),
           danger: true,
         }))) return;
         await window.api.deleteProfile(p.id);
@@ -725,7 +755,6 @@ function openManager() {
 // ----------------------------------------------------------------- theme --
 
 const THEMES = ['system', 'light', 'dark'];
-const THEME_LABEL = { system: '🌗 跟随系统', light: '☀️ 浅色', dark: '🌙 深色' };
 const schemeMq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
 
 let theme = 'system';
@@ -733,35 +762,13 @@ let theme = 'system';
 function applyTheme() {
   const effective = theme === 'system' ? (schemeMq && schemeMq.matches ? 'dark' : 'light') : theme;
   document.documentElement.dataset.theme = effective;
-  $('#themeBtn').textContent = THEME_LABEL[theme];
+  $('#themeBtn').textContent = { system: t('themeSystem'), light: t('themeLight'), dark: t('themeDark') }[theme];
 }
 
 function cycleTheme() {
   theme = THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length];
   try { localStorage.setItem('sc-theme', theme); } catch { /* private mode */ }
   applyTheme();
-}
-
-// ----------------------------------------------------------------- update --
-
-let updateState = null;
-
-function applyUpdateStatus(msg) {
-  if (!msg) return;
-  updateState = msg.state;
-  const pill = $('#updatePill');
-  if (msg.state === 'available') {
-    pill.textContent = `⬇️ 新版本 v${msg.version} 下载中…`;
-    pill.hidden = false;
-  } else if (msg.state === 'downloading') {
-    pill.textContent = `⬇️ 下载中 ${msg.percent}%`;
-    pill.hidden = false;
-  } else if (msg.state === 'downloaded') {
-    pill.textContent = `✅ v${msg.version} 已就绪，点击重启更新`;
-    pill.hidden = false;
-  } else if (msg.state === 'error' || msg.state === 'none') {
-    pill.hidden = true;
-  }
 }
 
 // ------------------------------------------------------------------ init --
@@ -796,13 +803,12 @@ function bind() {
   $('#exportMd').addEventListener('click', () => exportReport('markdown'));
   $('#exportJson').addEventListener('click', () => exportReport('json'));
   $('#themeBtn').addEventListener('click', cycleTheme);
-  if (schemeMq && schemeMq.addEventListener) schemeMq.addEventListener('change', applyTheme);
-  // in-app update pill (only fires in packaged builds)
-  window.api.onUpdateStatus(msg => applyUpdateStatus(msg));
-  $('#updatePill').addEventListener('click', () => {
-    if (updateState === 'downloaded') window.api.updateInstall();
-    else window.api.updateCheck();
+  $('#langBtn').addEventListener('click', () => {
+    const next = L.LANGS[(L.LANGS.indexOf(state.lang) + 1) % L.LANGS.length];
+    try { localStorage.setItem('sc-lang', next); } catch { /* ignore */ }
+    location.reload(); // simplest reliable re-render for a language switch
   });
+  if (schemeMq && schemeMq.addEventListener) schemeMq.addEventListener('change', applyTheme);
   document.addEventListener('keydown', e => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
       e.preventDefault();
@@ -827,10 +833,14 @@ function bind() {
     $('#progressLog').textContent = '';
     $('#progressPanel').hidden = true;
   });
+  window.api.onUpdateStatus(msg => applyUpdateStatus(msg));
+  $('#updatePill').addEventListener('click', () => {
+    if (updateState === 'downloaded') window.api.updateInstall();
+    else window.api.updateCheck();
+  });
   window.api.onProgress(msg => progressLine(msg.message));
 
   try { theme = localStorage.getItem('sc-theme') || 'system'; } catch { theme = 'system'; }
-  applyTheme();
 
   try {
     const last = JSON.parse(localStorage.getItem('sc-last') || 'null');
@@ -843,11 +853,35 @@ function bind() {
   setType('linux');
 }
 
+// ----------------------------------------------------------------- update --
+
+let updateState = null;
+
+function applyUpdateStatus(msg) {
+  if (!msg) return;
+  updateState = msg.state;
+  const pill = $('#updatePill');
+  if (msg.state === 'available') {
+    pill.textContent = fmt(t('updateDownloading'), { v: msg.version });
+    pill.hidden = false;
+  } else if (msg.state === 'downloading') {
+    pill.textContent = fmt(t('updatePercent'), { p: msg.percent });
+    pill.hidden = false;
+  } else if (msg.state === 'downloaded') {
+    pill.textContent = fmt(t('updateReady'), { v: msg.version });
+    pill.title = t('updateReadyTip');
+    pill.hidden = false;
+  } else if (msg.state === 'error' || msg.state === 'none') {
+    pill.hidden = true;
+  }
+}
+
 async function init() {
   bind();
+  applyI18n();
   await loadProfiles();
   const v = await window.api.version();
-  $('#versionFoot').textContent = `SwitchCheck v${v} · 与 CLI 同一体检引擎`;
+  $('#versionFoot').textContent = fmt(t('versionFoot'), { v });
 }
 
 init();

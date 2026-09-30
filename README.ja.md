@@ -26,7 +26,7 @@
 
 ## 🖥️ デスクトップアプリ
 
-![CI チェック結果](docs/screenshot-ci.png)
+![CI チェック結果](docs/screenshot-ci-en.png)
 
 ```bash
 npm install
@@ -42,6 +42,7 @@ CLI と同じエンジンを搭載した、中国語 UI のフルビジュアル
 - **チェック履歴** —— 実行するたびにローカル保存。過去のレポートを開き、前回との差分（新規 / 解決済み）を確認。
 - **試験用 PR をワンクリック作成** —— ローカルの CI チェック後、`ubuntu-26.04` にピン留めした PR を開き、CI 自身に移行を実証させる。
 - **自動アップデート** —— バックグラウンドで確認、サイレントダウンロード、ワンクリックで再起動（GitHub Releases）。
+- **三言語 UI** —— 简体中文 / English / 日本語、アプリ内でワンクリック切替。エクスポートも UI 言語に追従。
 - レポートは中国語 **HTML**、Markdown、JSON でエクスポート可能。
 
 **Windows / macOS / Linux** 向けインストーラーは各[リリース](https://github.com/kongliuli/switchcheck/releases)に添付（レビュー完了まではドラフト）—— 自分でビルドする場合は `npm run dist:win|dist:mac|dist:linux`。

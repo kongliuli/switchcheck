@@ -250,7 +250,8 @@ ipcMain.handle('report:save', async (_e, req) => {
   });
   if (r.canceled || !r.filePath) return null;
   let body;
-  if (req.format === 'html') body = html.render(req.title, req.sections, req.meta, { zh: true }); // GUI exports speak the UI's language
+  // The export speaks the UI's language.
+  if (req.format === 'html') body = html.render(req.title, req.sections, req.meta, { lang: req.lang || 'zh' });
   else if (req.format === 'markdown') body = markdown.render(req.title, req.sections, req.meta);
   else body = JSON.stringify({ tool: 'switchcheck', version: VERSION, ...req }, null, 2);
   fs.writeFileSync(r.filePath, body);

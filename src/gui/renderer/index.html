@@ -15,124 +15,125 @@
       <div class="logo">🚦</div>
       <div>
         <div class="name">SwitchCheck</div>
-        <div class="tagline">换环境体检 · 红黄绿报告</div>
+        <div class="tagline" data-i18n="tagline"></div>
       </div>
     </div>
 
     <section class="panel">
-      <h2>体检类型</h2>
-      <div class="choices" id="typeChoices" role="radiogroup" aria-label="体检类型">
+      <h2 data-i18n="panelType"></h2>
+      <div class="choices" id="typeChoices" role="radiogroup" aria-label="check type">
         <button type="button" class="choice on" data-type="linux" role="radio" aria-checked="true">
           <div class="icon">🐧</div>
           <div>
-            <div class="t">Windows → Linux 迁移</div>
-            <div class="d">扫描已装软件、Steam 游戏、硬件、打印机</div>
+            <div class="t" data-i18n="type.linux"></div>
+            <div class="d" data-i18n="type.linux.d"></div>
           </div>
         </button>
         <button type="button" class="choice" data-type="ci" role="radio" aria-checked="false">
           <div class="icon">⚙️</div>
           <div>
-            <div class="t">CI → Ubuntu 26.04</div>
-            <div class="d">扫描仓库的 GitHub Actions workflows</div>
+            <div class="t" data-i18n="type.ci"></div>
+            <div class="d" data-i18n="type.ci.d"></div>
           </div>
         </button>
         <button type="button" class="choice" data-type="runtime" role="radio" aria-checked="false">
           <div class="icon">⏱️</div>
           <div>
-            <div class="t">运行时 EOL</div>
-            <div class="d">Node / Python 版本是否已停维或临期</div>
+            <div class="t" data-i18n="type.runtime"></div>
+            <div class="d" data-i18n="type.runtime.d"></div>
           </div>
         </button>
       </div>
     </section>
 
     <section class="panel">
-      <h2>体检目标</h2>
+      <h2 data-i18n="panelTarget"></h2>
 
       <!-- linux targets -->
-      <div class="choices small" id="linuxTargets" role="radiogroup" aria-label="体检目标（迁移体检）">
+      <div class="choices small" id="linuxTargets" role="radiogroup" aria-label="target (migration)">
         <button type="button" class="choice on" data-target="local" role="radio" aria-checked="true">
           <div class="icon">💻</div>
-          <div><div class="t">这台电脑</div></div>
+          <div><div class="t" data-i18n="target.local"></div></div>
         </button>
         <button type="button" class="choice" data-target="ssh" role="radio" aria-checked="false">
           <div class="icon">🌐</div>
-          <div><div class="t">SSH 远程 Windows 主机</div></div>
+          <div><div class="t" data-i18n="target.sshWin"></div></div>
         </button>
       </div>
 
       <!-- ci / runtime targets -->
-      <div class="choices small" id="ciTargets" role="radiogroup" aria-label="体检目标（仓库体检）" hidden>
+      <div class="choices small" id="ciTargets" role="radiogroup" aria-label="target (repo checks)" hidden>
         <button type="button" class="choice on" data-target="local" role="radio" aria-checked="true">
           <div class="icon">📁</div>
-          <div><div class="t">本地文件夹</div></div>
+          <div><div class="t" data-i18n="target.localRepo"></div></div>
         </button>
         <button type="button" class="choice" data-target="ssh" role="radio" aria-checked="false">
           <div class="icon">🌐</div>
-          <div><div class="t">SSH 远程主机上的仓库</div></div>
+          <div><div class="t" data-i18n="target.sshRepo"></div></div>
         </button>
       </div>
 
       <div id="ciLocalBlock" class="subblock" hidden>
         <label class="field">
-          <span>仓库路径</span>
+          <span data-i18n="repoPath"></span>
           <div class="row">
             <input type="text" id="ciPathInput" placeholder="D:/path/to/repo">
-            <button id="ciBrowseBtn" class="ghost">浏览…</button>
+            <button id="ciBrowseBtn" class="ghost" data-i18n="browse"></button>
           </div>
         </label>
       </div>
 
       <div id="ciRemoteBlock" class="subblock" hidden>
         <label class="field">
-          <span>远程仓库路径</span>
+          <span data-i18n="remoteRepoPath"></span>
           <input type="text" id="remotePathInput" placeholder="~/my-repo 或 D:/Code/my-repo">
         </label>
       </div>
 
       <div id="sshBlock" class="subblock" hidden>
         <label class="field">
-          <span>SSH 连接</span>
+          <span data-i18n="sshConn"></span>
           <div class="row">
             <select id="profileSelect"></select>
-            <button id="manageBtn" class="ghost">管理…</button>
+            <button id="manageBtn" class="ghost" data-i18n="manage"></button>
           </div>
         </label>
         <label class="field" id="sshPasswordRow">
-          <span>密码（未保存时需输入）</span>
+          <span data-i18n="sshPassword"></span>
           <input type="password" id="sshPasswordInput" placeholder="••••••••">
         </label>
         <label class="field" id="sshPassphraseRow">
-          <span>私钥口令（未保存时需输入）</span>
+          <span data-i18n="sshPassphrase"></span>
           <input type="password" id="sshPassphraseInput" placeholder="••••••••">
         </label>
         <details class="hintbox">
-          <summary>远程主机如何启用 OpenSSH 服务器？</summary>
+          <summary data-i18n="sshHintTitle"></summary>
           <div class="hintbody">
-            目标 Windows 机器上，管理员 PowerShell 执行：<br>
+            <span data-i18n="sshHintBody"></span><br>
             <code>Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0</code><br>
             <code>Start-Service sshd; Set-Service sshd -StartupType Automatic</code><br>
-            或：设置 → 应用 → 可选功能 → 添加「OpenSSH 服务器」。
+            <span data-i18n="sshHintOr"></span>
           </div>
         </details>
-        <div class="hint" id="sshTargetHint">远程主机需为 Windows 并已启用 OpenSSH 服务器。</div>
+        <div class="hint" id="sshTargetHint"></div>
       </div>
     </section>
 
-    <button id="runBtn">开始体检</button>
+    <button id="runBtn" data-i18n="run"></button>
 
     <section class="panel" id="progressPanel" hidden>
-      <h2>进行中 <button id="clearProgressBtn" class="ghost">清除</button></h2>
+      <h2><span data-i18n="progress"></span> <button id="clearProgressBtn" class="ghost" data-i18n="clear"></button></h2>
       <div id="progressLog" aria-live="polite"></div>
     </section>
 
     <div class="side-actions">
-      <button id="historyBtn" class="ghost">🕘 历史记录</button>
+      <button id="historyBtn" class="ghost" data-i18n="history"></button>
       <button id="updatePill" class="ghost" hidden></button>
     </div>
 
     <footer class="about">
-      <button id="themeBtn" class="ghost">🌗 跟随系统</button>
+      <button id="themeBtn" class="ghost"></button>
+      <button id="langBtn" class="ghost"></button>
       <div id="versionFoot"></div>
     </footer>
   </aside>
@@ -142,12 +143,12 @@
 
     <div id="empty">
       <div class="big">🚦</div>
-      <h1>切换环境之前，先体检一次</h1>
-      <p>结果按 🔴 阻塞 / 🟡 需确认 / 🟢 可用 / ℹ️ 说明 分级，整体结论取最差项。</p>
+      <h1 data-i18n="emptyTitle"></h1>
+      <p data-i18n="emptyLead"></p>
       <div class="steps">
-        <div class="step"><i>1</i><span>选择体检类型与目标</span></div>
-        <div class="step"><i>2</i><span>一键体检看红黄绿结论</span></div>
-        <div class="step"><i>3</i><span>过滤细节，导出报告</span></div>
+        <div class="step"><i>1</i><span data-i18n="step1"></span></div>
+        <div class="step"><i>2</i><span data-i18n="step2"></span></div>
+        <div class="step"><i>3</i><span data-i18n="step3"></span></div>
       </div>
     </div>
 
@@ -163,18 +164,18 @@
       </div>
 
       <div class="toolbar">
-        <div class="filters" id="filterChips" role="group" aria-label="按状态过滤">
-          <button data-f="all" class="on" aria-pressed="true">全部<b class="count">0</b></button>
-          <button data-f="red" aria-pressed="false"><span class="dot red"></span>阻塞<b class="count">0</b></button>
-          <button data-f="yellow" aria-pressed="false"><span class="dot yellow"></span>需确认<b class="count">0</b></button>
-          <button data-f="green" aria-pressed="false"><span class="dot green"></span>可用<b class="count">0</b></button>
-          <button data-f="info" aria-pressed="false"><span class="dot info"></span>说明<b class="count">0</b></button>
+        <div class="filters" id="filterChips" role="group" aria-label="filter">
+          <button data-f="all" class="on" aria-pressed="true"><span data-i18n="all"></span><b class="count">0</b></button>
+          <button data-f="red" aria-pressed="false"><span class="dot red"></span><span data-i18n-status="red"></span><b class="count">0</b></button>
+          <button data-f="yellow" aria-pressed="false"><span class="dot yellow"></span><span data-i18n-status="yellow"></span><b class="count">0</b></button>
+          <button data-f="green" aria-pressed="false"><span class="dot green"></span><span data-i18n-status="green"></span><b class="count">0</b></button>
+          <button data-f="info" aria-pressed="false"><span class="dot info"></span><span data-i18n-status="info"></span><b class="count">0</b></button>
         </div>
         <div class="exports">
-          <button id="trialBtn" class="primary" hidden title="创建一个把 Ubuntu job 钉到 26.04 的分支并开 PR（需要 gh）">创建试跑 PR</button>
-          <button id="exportHtml" class="ghost">导出 HTML</button>
-          <button id="exportMd" class="ghost">导出 Markdown</button>
-          <button id="exportJson" class="ghost">导出 JSON</button>
+          <button id="trialBtn" class="primary" hidden data-i18n="trialBtn" data-i18n-title="trialTitle"></button>
+          <button id="exportHtml" class="ghost" data-i18n="exportHtml"></button>
+          <button id="exportMd" class="ghost" data-i18n="exportMd"></button>
+          <button id="exportJson" class="ghost" data-i18n="exportJson"></button>
         </div>
       </div>
 

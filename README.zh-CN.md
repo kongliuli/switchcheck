@@ -42,6 +42,7 @@ npm run gui
 - **体检历史** —— 每次体检自动存本地；打开旧报告，与上一次对比（新增 / 已解决）。
 - **创建试跑 PR** —— 本地 CI 体检完成后，一键开 PR 把 job 钉到 `ubuntu-26.04`，让 CI 自己证明迁移可行。
 - **自动更新** —— 后台检查、静默下载、一键重启（GitHub Releases）。
+- **三语界面** —— 简体中文 / English / 日本語，应用内一键切换；导出报告跟随界面语言。
 - 任何报告可导出为中文 **HTML**、Markdown 或 JSON。
 
 **Windows / macOS / Linux** 安装包附在每个 [Release](https://github.com/kongliuli/switchcheck/releases)（审核前为草稿）—— 也可以自己构建：`npm run dist:win|dist:mac|dist:linux`。
