@@ -43,7 +43,8 @@ jobs:
           else
             sudo apt-get update -y && sudo apt-get install -y xvfb
             EXE=$(find dist -type f -name "switchcheck" | head -1)
-            xvfb-run -a "$EXE" --smoke
+            # --no-sandbox: the SUID chrome-sandbox helper can't be chowned in CI
+            xvfb-run -a "$EXE" --no-sandbox --smoke
           fi
       - uses: actions/upload-artifact@v4
         if: always()
