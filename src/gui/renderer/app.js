@@ -41,15 +41,25 @@ function rememberSelection() {
 
 // ---------------------------------------------------------------- sidebar --
 
+function syncRadios(groupSel, value) {
+  const group = $(groupSel);
+  if (!group) return;
+  [...group.querySelectorAll('.choice')].forEach(c => {
+    const on = c.dataset.type === value || c.dataset.target === value;
+    c.classList.toggle('on', on);
+    c.setAttribute('aria-checked', on ? 'true' : 'false');
+  });
+}
+
 function setType(type) {
   state.type = type;
-  $$('#typeChoices .choice').forEach(c => c.classList.toggle('on', c.dataset.type === type));
+  syncRadios('#typeChoices', type);
   const repoLike = type === 'ci' || type === 'runtime';
   $('#linuxTargets').hidden = type !== 'linux';
   $('#ciTargets').hidden = !repoLike;
   $('#sshTargetHint').textContent = type === 'linux'
     ? '远程主机需为 Windows 并已启用 OpenSSH 服务器。'
-    : '远程主机可以是 Windows 或 Linux,通过 SFTP 读取仓库文件。';
+    : '远程主机可以是 Windows 或 Linux，通过 SFTP 读取仓库文件。';
   if (type === 'linux' && !IS_WIN) {
     $('#linuxTargets .choice[data-target="local"]').hidden = true;
     if (state.target === 'local') state.target = 'ssh';
@@ -64,8 +74,7 @@ function setType(type) {
 
 function setTarget(target) {
   state.target = target;
-  const group = $(state.type === 'linux' ? '#linuxTargets' : '#ciTargets');
-  [...group.querySelectorAll('.choice')].forEach(c => c.classList.toggle('on', c.dataset.target === target));
+  syncRadios(state.type === 'linux' ? '#linuxTargets' : '#ciTargets', target);
   $('#ciLocalBlock').hidden = !(state.type !== 'linux' && target === 'local');
   $('#ciRemoteBlock').hidden = !(state.type !== 'linux' && target === 'ssh');
   $('#sshBlock').hidden = target !== 'ssh';
@@ -122,13 +131,15 @@ function progressLine(message, cls) {
 async function run() {
   if (state.running) return;
   if (state.target === 'ssh' && !selectedProfile()) {
-    return showError('请先在「SSH 连接」中选择一个连接配置(点「管理…」可新建)。');
+    return showError('请先在「SSH 连接」中选择一个连接配置（点「管理…」可新建）。');
   }
   if (state.type !== 'linux' && state.target === 'local' && !$('#ciPathInput').value.trim()) {
     return showError('请填写或选择本地仓库路径。');
   }
   hideError();
   state.running = true;
+  const lockable = ['#exportHtml', '#exportMd', '#exportJson', '#trialBtn', '#historyBtn', '#manageBtn', '#ciBrowseBtn'];
+  lockable.forEach(s => { $(s).disabled = true; });
   const btn = $('#runBtn');
   btn.disabled = true;
   btn.classList.add('running');
@@ -150,7 +161,7 @@ async function run() {
   try {
     const result = await window.api.startCheck(opts);
     if (!result.ok) {
-      showError(result.error || '检查失败');
+      showError(result.error || '体检失败');
     } else {
       progressLine('体检完成', 'ok');
       renderResult(result);
@@ -162,6 +173,7 @@ async function run() {
     state.running = false;
     btn.disabled = false;
     btn.classList.remove('running');
+    lockable.forEach(s => { $(s).disabled = false; });
     setRunLabel();
   }
 }
@@ -213,8 +225,11 @@ function renderResult(result, opts = {}) {
 
   const wrap = $('#sections');
   wrap.textContent = '';
-  for (const section of result.sections) {
-    if (!section.findings.length) continue;
+  const visible = result.sections.filter(s => s.findings.length);
+  if (!visible.length) {
+    wrap.append(el('div', 'empty-note', '体检完成 —— 没有发现任何条目。'));
+  }
+  for (const section of visible) {
     const sorted = [...section.findings].sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status]);
     const det = el('details', 'check-section');
     if (sorted.some(f => f.status === 'red' || f.status === 'yellow')) det.open = true;
@@ -259,6 +274,7 @@ function findingItem(f) {
   li.append(body);
   const copy = el('button', 'ghost copy-btn', '⧉');
   copy.title = '复制这条建议';
+  copy.setAttribute('aria-label', '复制这条建议');
   copy.addEventListener('click', async () => {
     const text = [f.title, f.detail, f.advice ? `建议：${f.advice}` : ''].filter(Boolean).join('\n');
     try {
@@ -281,7 +297,11 @@ function updateChipCounts(c) {
 
 function setFilter(f) {
   state.filter = f;
-  $$('#filterChips button').forEach(b => b.classList.toggle('on', b.dataset.f === f));
+  $$('#filterChips button').forEach(b => {
+    const on = b.dataset.f === f;
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  });
   for (const li of $$('#sections li.item')) {
     li.hidden = !(f === 'all' || li.dataset.status === f);
   }
@@ -306,11 +326,17 @@ async function exportReport(format) {
   const path = await window.api.saveReport({
     format, title: r.title, sections: r.sections, meta: r.meta, suggestedName: suggested,
   });
-  if (path) progressLine(`已导出:${format.toUpperCase()} → ${path}`, 'ok');
+  if (path) progressLine(`已导出：${format.toUpperCase()} → ${path}`, 'ok');
 }
 
 async function runTrialFromGui() {
   if (!state.lastOpts || state.lastOpts.type !== 'ci') return;
+  const ok = await confirmDialog({
+    title: '创建试跑 PR',
+    message: '将在仓库中创建一个分支（把 Ubuntu job 钉到 ubuntu-26.04），并尝试通过 gh 打开 PR，让 CI 先用 26.04 试跑。继续吗？',
+    confirmText: '创建 PR',
+  });
+  if (!ok) return;
   await window.api.runTrial({
     ciPath: state.lastOpts.ciPath || '.',
     dryRun: false,
@@ -342,7 +368,7 @@ function diffHtml(prevAt, diff) {
   }
   for (const f of diff.resolved.slice(0, 10)) {
     const row = el('div', 'diff-row resolved');
-    row.append(el('span', null, `✓ 已解决:${f.title}`));
+    row.append(el('span', null, `✓ ${f.title}`));
     list.append(row);
   }
   if (diff.fresh.length || diff.resolved.length) box.append(list);
@@ -371,9 +397,7 @@ async function loadHistoryEntry(id) {
 }
 
 async function openHistory() {
-  const mask = el('div', 'modal-mask');
-  mask.addEventListener('click', e => { if (e.target === mask) closeModal(); });
-  const modal = el('div', 'modal');
+  const modal = el('div');
   modal.append(el('h3', null, '体检历史'));
 
   const listWrap = el('div');
@@ -382,6 +406,12 @@ async function openHistory() {
   const actions = el('div', 'actions');
   const clearBtn = el('button', 'ghost danger', '清空历史');
   clearBtn.addEventListener('click', async () => {
+    if (!(await confirmDialog({
+      title: '清空体检历史',
+      message: '所有历史记录将被删除，且无法恢复。',
+      confirmText: '清空',
+      danger: true,
+    }))) return;
     await window.api.historyClear();
     await renderList();
   });
@@ -389,8 +419,7 @@ async function openHistory() {
   closeBtn.addEventListener('click', closeModal);
   actions.append(clearBtn, closeBtn);
   modal.append(actions);
-  mask.append(modal);
-  $('#modalRoot').append(mask);
+  openModal(modal);
 
   async function renderList() {
     listWrap.textContent = '';
@@ -406,7 +435,7 @@ async function openHistory() {
       row.append(meta);
       const pill = el('span', `badge ${e.verdict}`, STATUS_ZH[e.verdict] || e.verdict);
       row.append(pill);
-      const load = el('button', 'ghost', '载入');
+      const load = el('button', 'ghost', '打开');
       load.addEventListener('click', async () => {
         closeModal();
         await loadHistoryEntry(e.id);
@@ -421,14 +450,71 @@ async function openHistory() {
 
 // ----------------------------------------------------------------- modal --
 
+// ------------------------------------------------- modal infrastructure --
+
+let modalKeyHandler = null;
+let lastFocused = null;
+
+function openModal(modal) {
+  closeModal();
+  lastFocused = document.activeElement;
+  modal.classList.add('modal');
+  modal.setAttribute('role', 'dialog');
+  modal.setAttribute('aria-modal', 'true');
+  const mask = el('div', 'modal-mask');
+  mask.addEventListener('mousedown', e => { if (e.target === mask) closeModal(); });
+  mask.append(modal);
+  $('#modalRoot').append(mask);
+  const first = modal.querySelector('button, input, select, textarea, [tabindex]:not([tabindex="-1"])');
+  if (first) first.focus();
+  modalKeyHandler = e => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      closeModal();
+    } else if (e.key === 'Tab') {
+      const items = [...modal.querySelectorAll('button, input, select, textarea, [tabindex]:not([tabindex="-1"])')]
+        .filter(x => !x.disabled && x.offsetParent !== null);
+      if (!items.length) return;
+      const at = items.indexOf(document.activeElement);
+      if (e.shiftKey && (at === 0 || at === -1)) { e.preventDefault(); items[items.length - 1].focus(); }
+      else if (!e.shiftKey && at === items.length - 1) { e.preventDefault(); items[0].focus(); }
+    }
+  };
+  document.addEventListener('keydown', modalKeyHandler);
+}
+
 function closeModal() {
+  if (modalKeyHandler) {
+    document.removeEventListener('keydown', modalKeyHandler);
+    modalKeyHandler = null;
+  }
   $('#modalRoot').textContent = '';
+  if (lastFocused && lastFocused.focus) { lastFocused.focus(); lastFocused = null; }
+}
+
+// Promise-based confirmation for destructive / outward-facing actions.
+function confirmDialog({ title, message, confirmText = '确定', danger = false }) {
+  return new Promise(resolve => {
+    const modal = el('div');
+    modal.append(
+      el('h3', null, title),
+      el('p', 'confirm-msg', message),
+    );
+    const actions = el('div', 'actions');
+    const cancelBtn = el('button', null, '取消');
+    const okBtn = el('button', danger ? 'primary danger' : 'primary', confirmText);
+    const done = v => { closeModal(); resolve(v); };
+    cancelBtn.addEventListener('click', () => done(false));
+    okBtn.addEventListener('click', () => done(true));
+    actions.append(cancelBtn, okBtn);
+    modal.append(actions);
+    openModal(modal);
+    okBtn.focus();
+  });
 }
 
 function openManager() {
-  const mask = el('div', 'modal-mask');
-  mask.addEventListener('click', e => { if (e.target === mask) closeModal(); });
-  const modal = el('div', 'modal');
+  const modal = el('div');
   modal.append(el('h3', null, 'SSH 连接管理'));
 
   const list = el('div');
@@ -560,8 +646,7 @@ function openManager() {
   closeBtn.addEventListener('click', closeModal);
   actions.append(newBtn, importBtn, exportBtn, closeBtn);
   modal.append(testResult, actions);
-  mask.append(modal);
-  $('#modalRoot').append(mask);
+  openModal(modal);
 
   async function renderList() {
     list.textContent = '';
@@ -582,19 +667,25 @@ function openManager() {
       }
       row.append(meta);
       const status = el('span');
+      status.setAttribute('aria-live', 'polite');
       const test = el('button', 'ghost', '测试');
       test.addEventListener('click', async () => {
         status.textContent = '测试中…';
         status.className = '';
-        const r = await window.api.sshTest({
-          profileId: p.id,
-          password: form.hidden ? '' : f.password.value,
-          passphrase: form.hidden ? '' : f.keyPassphrase.value,
-        });
-        status.className = r.ok ? 'test-ok' : 'test-fail';
-        status.textContent = r.ok
-          ? { windows: '✓ 可连接(Windows)', unix: '✓ 可连接(Linux/Unix)' }[r.platform] || '✓ 可连接'
-          : `✗ ${r.error}`;
+        test.disabled = true;
+        try {
+          const r = await window.api.sshTest({
+            profileId: p.id,
+            password: form.hidden ? '' : f.password.value,
+            passphrase: form.hidden ? '' : f.keyPassphrase.value,
+          });
+          status.className = r.ok ? 'test-ok' : 'test-fail';
+          status.textContent = r.ok
+            ? { windows: '✓ 可连接（Windows）', unix: '✓ 可连接（Linux/Unix）' }[r.platform] || '✓ 可连接'
+            : `✗ ${r.error}`;
+        } finally {
+          test.disabled = false;
+        }
       });
       const edit = el('button', 'ghost', '编辑');
       edit.addEventListener('click', () => {
@@ -613,6 +704,12 @@ function openManager() {
       });
       const del = el('button', 'ghost danger', '删除');
       del.addEventListener('click', async () => {
+        if (!(await confirmDialog({
+          title: `删除「${p.name}」`,
+          message: '连接配置将被删除，保存在本机的密码/口令也会一并清除。',
+          confirmText: '删除',
+          danger: true,
+        }))) return;
         await window.api.deleteProfile(p.id);
         await loadProfiles();
         await renderList();
@@ -710,7 +807,25 @@ function bind() {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
       e.preventDefault();
       run();
+      return;
     }
+    // radiogroup arrow navigation for the choice cards
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+      const group = e.target.closest && e.target.closest('[role="radiogroup"]');
+      if (!group) return;
+      const items = [...group.querySelectorAll('.choice')].filter(c => !c.hidden);
+      const at = items.indexOf(document.activeElement);
+      if (at === -1) return;
+      const dir = (e.key === 'ArrowDown' || e.key === 'ArrowRight') ? 1 : -1;
+      const next = items[(at + dir + items.length) % items.length];
+      e.preventDefault();
+      next.focus();
+      next.click();
+    }
+  });
+  $('#clearProgressBtn').addEventListener('click', () => {
+    $('#progressLog').textContent = '';
+    $('#progressPanel').hidden = true;
   });
   window.api.onProgress(msg => progressLine(msg.message));
 
@@ -732,7 +847,7 @@ async function init() {
   bind();
   await loadProfiles();
   const v = await window.api.version();
-  $('#versionFoot').textContent = `SwitchCheck v${v} · 与 CLI 同一检查引擎`;
+  $('#versionFoot').textContent = `SwitchCheck v${v} · 与 CLI 同一体检引擎`;
 }
 
 init();

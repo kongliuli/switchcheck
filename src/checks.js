@@ -50,7 +50,7 @@ async function runLinuxCheck(opts = {}, deps = {}) {
       if (await conn.detectPlatform() !== 'windows') {
         throw new Error('SSH 目标不是 Windows 主机 — Windows→Linux 迁移体检需要扫描 Windows 机器。');
       }
-      machine = await collect.collectAll(conn, (step, label) => send('collect', `远程采集:${label}…`));
+      machine = await collect.collectAll(conn, (step, label) => send('collect', `远程采集：${label}…`));
     } finally {
       conn.close();
     }
@@ -60,7 +60,7 @@ async function runLinuxCheck(opts = {}, deps = {}) {
     if ((deps.platform || process.platform) !== 'win32') {
       throw new Error('本机体检仅支持 Windows。在 macOS / Linux 上请选择「SSH 远程 Windows 主机」来体检那台 Windows 电脑。');
     }
-    machine = await collect.collectAll(collect.localRunner, (step, label) => send('collect', `正在采集:${label}…`));
+    machine = await collect.collectAll(collect.localRunner, (step, label) => send('collect', `正在采集：${label}…`));
   }
   send('match', '正在匹配知识库…');
   const sections = checkMachine(machine, kbs);

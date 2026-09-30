@@ -158,7 +158,7 @@ if (!window.api) {
           ? [['scan', '正在读取运行时声明文件 …'], ['match', '正在对照运行时 EOL 知识库…']]
           : ci
             ? [['scan', '正在读取 .github/workflows …'], ['match', '正在对照 Ubuntu 26.04 镜像清单…']]
-            : [['collect', '正在采集:已安装软件…'], ['collect', '正在采集:Steam 库…'], ['collect', '正在采集:硬件…'], ['collect', '正在采集:打印机…']];
+            : [['collect', '正在采集：已安装软件…'], ['collect', '正在采集：Steam 库…'], ['collect', '正在采集：硬件…'], ['collect', '正在采集：打印机…']];
       for (const [stage, msg] of steps) {
         await sleep(350);
         window.api.__emit({ stage, message: msg });
