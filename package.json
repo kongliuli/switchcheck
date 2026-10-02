@@ -1,6 +1,6 @@
 {
   "name": "switchcheck",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Pre-flight checks before you switch environments: GitHub CI to Ubuntu 26.04, Windows desktop to Linux. Scan what you have, diff it against the target environment, get a red/yellow/green report.",
   "license": "MIT",
   "author": "SwitchCheck contributors",
@@ -22,7 +22,7 @@
     "dist:win": "electron-builder --win",
     "dist:mac": "electron-builder --mac",
     "dist:linux": "electron-builder --linux",
-    "test": "node --test test/engine.test.js test/report.test.js test/ci-scan.test.js test/ci-check.test.js test/desktop-parse.test.js test/desktop-check.test.js test/gui-modules.test.js test/checks.test.js test/profiles.test.js test/runtime.test.js test/ssh-hardening.test.js"
+    "test": "node --test test/engine.test.js test/report.test.js test/ci-scan.test.js test/ci-check.test.js test/desktop-parse.test.js test/desktop-check.test.js test/gui-modules.test.js test/checks.test.js test/fix.test.js test/profiles.test.js test/runtime.test.js test/ssh-hardening.test.js"
   },
   "dependencies": {
     "electron-updater": "^6.8.9",

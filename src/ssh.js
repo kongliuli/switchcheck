@@ -12,7 +12,8 @@
 //     the caller stores runner.hostFingerprint. Mismatch aborts pre-auth.
 //   - every exec/SFTP op runs under a timeout — a hung remote never hangs
 //     the check.
-//   - ssh2's raw errors are translated into plain-language Chinese ones.
+//   - ssh2's raw errors are translated into plain-language messages in
+//     opts.lang (zh default; en/ja tables live in src/labels.js).
 //
 // ssh2 is lazy-required: the plain CLI keeps working without it loaded.
 
@@ -24,6 +25,7 @@ const OP_TIMEOUT = 45000;
 const UTF8 = '[Console]::OutputEncoding=[System.Text.Encoding]::UTF8;';
 
 const { psResult } = require('./desktop/ps');
+const L = require('./labels');
 
 function encodePs(script) {
   return Buffer.from(UTF8 + script, 'utf16le').toString('base64');
@@ -54,23 +56,32 @@ function normalizeFingerprint(input) {
   return s; // unknown shape — keep verbatim so equal inputs still compare equal
 }
 
-function friendlySshError(e) {
+function fmt(s, m) {
+  return String(s).replace(/\{(\w+)\}/g, (_, k) => (m[k] !== undefined ? m[k] : ''));
+}
+
+function msgs(lang) {
+  return (L.LANGS.includes(lang) ? L.STR[lang] : L.STR.zh).ui;
+}
+
+function friendlySshError(e, lang = 'zh') {
+  const ui = msgs(lang);
   const m = String((e && e.message) || e);
-  if (/ETIMEDOUT|timed out/i.test(m)) return '连接超时 — 检查主机地址与网络';
-  if (/ECONNREFUSED/.test(m)) return '连接被拒绝 — 该端口没有响应，远端可能未启用 OpenSSH 服务器';
-  if (/ENOTFOUND|getaddrinfo/i.test(m)) return '主机名无法解析 — 检查地址拼写与 DNS';
-  if (/ENETUNREACH|EHOSTUNREACH/.test(m)) return '网络不可达';
+  if (/ETIMEDOUT|timed out/i.test(m)) return ui.errTimeout;
+  if (/ECONNREFUSED/.test(m)) return ui.errRefused;
+  if (/ENOTFOUND|getaddrinfo/i.test(m)) return ui.errDNS;
+  if (/ENETUNREACH|EHOSTUNREACH/.test(m)) return ui.errUnreachable;
   if (/permission denied|All configured authentication|authentication methods failed|no supported/i.test(m)) {
-    return '认证失败 — 用户名、密码或私钥不正确';
+    return ui.errAuth;
   }
-  if (/Cannot parse privateKey|encrypted/i.test(m)) return '私钥无法解析 — 确认文件格式（PEM/OpenSSH）与口令';
-  if (/ENOENT/.test(m)) return '私钥文件不存在 — 检查路径';
+  if (/Cannot parse privateKey|encrypted/i.test(m)) return ui.errKeyParse;
+  if (/ENOENT/.test(m)) return ui.errKeyMissing;
   return m;
 }
 
-function withTimeout(p, ms, label) {
+function withTimeout(p, ms, message) {
   return new Promise((resolve, reject) => {
-    const t = setTimeout(() => reject(new Error(`${label}超时（${Math.round(ms / 1000)}s）— 远程主机可能无响应`)), ms);
+    const t = setTimeout(() => reject(new Error(message)), ms);
     Promise.resolve(p).then(
       v => { clearTimeout(t); resolve(v); },
       e => { clearTimeout(t); reject(e); },
@@ -80,12 +91,14 @@ function withTimeout(p, ms, label) {
 
 // Connects and returns a runner-like handle. opts:
 //   host, port, username, password | privateKey | keyPath, passphrase,
-//   expectedFingerprint (TOFU), opTimeoutMs
+//   expectedFingerprint (TOFU), opTimeoutMs, lang ('zh'|'en'|'ja')
 async function connect(opts, log = () => {}) {
   const { Client } = require('ssh2');
+  const ui = msgs(opts.lang);
   const conn = new Client();
   const state = { sftp: null, closed: false, fingerprint: null, hostKeyRejected: false };
   const opTimeout = opts.opTimeoutMs || OP_TIMEOUT;
+  const execTimeoutMsg = () => fmt(ui.sshTimeout, { label: 'SSH', s: Math.round(opTimeout / 1000) });
 
   try {
     await new Promise((resolve, reject) => {
@@ -117,17 +130,16 @@ async function connect(opts, log = () => {}) {
   } catch (e) {
     try { conn.end(); } catch { /* already gone */ }
     if (state.hostKeyRejected) {
-      throw new Error(
-        '主机密钥指纹与保存的不一致 — 服务器可能重装过，也可能存在中间人风险。' +
-        `确认无误后，请在连接管理器中删除该连接并重新保存。期望 ${opts.expectedFingerprint}，实际 ${state.fingerprint || '未知'}`,
-      );
+      throw new Error(fmt(ui.sshHostKeyChanged, {
+        expected: opts.expectedFingerprint, actual: state.fingerprint || '?',
+      }));
     }
-    throw new Error(friendlySshError(e));
+    throw new Error(friendlySshError(e, opts.lang));
   }
-  log('SSH 已连接');
+  log(ui.connected);
 
   const exec = command => withTimeout(new Promise((resolve, reject) => {
-    if (state.closed) return reject(new Error('SSH 连接已断开'));
+    if (state.closed) return reject(new Error(ui.sshDisconnected));
     conn.exec(command, (err, stream) => {
       if (err) return reject(err);
       const out = [];
@@ -138,13 +150,13 @@ async function connect(opts, log = () => {}) {
         resolve({ code, stdout: Buffer.concat(out).toString('utf8'), stderr: Buffer.concat(errOut).toString('utf8') });
       });
     });
-  }), opTimeout, '远程命令执行');
+  }), opTimeout, execTimeoutMsg());
 
   const sftp = () => {
     if (!state.sftp) {
       state.sftp = withTimeout(new Promise((resolve, reject) => {
         conn.sftp((err, s) => (err ? reject(err) : resolve(s)));
-      }), opTimeout, 'SFTP 会话建立');
+      }), opTimeout, execTimeoutMsg());
     }
     return state.sftp;
   };
@@ -168,14 +180,18 @@ async function connect(opts, log = () => {}) {
     try {
       r = await exec(`powershell.exe -NoProfile -NonInteractive -EncodedCommand ${encodePs(script)}`);
     } catch (e) {
-      return { ok: false, error: `SSH 命令执行失败: ${e.message}` };
+      return { ok: false, error: fmt(ui.sshExecFailed, { msg: e.message }) };
     }
-    return psResult(r, { remote: true });
+    const res = psResult(r, { remote: true });
+    if (!res.ok && /powershell\.exe/i.test(res.error)) {
+      return { ok: false, error: ui.sshNoPowershell };
+    }
+    return res;
   };
 
   const s = await sftp();
   // SFTP's login directory — '~' paths normalize against this.
-  const homeDir = (await withTimeout(s.realpath('.'), opTimeout, 'SFTP realpath')).replace(/\\/g, '/');
+  const homeDir = (await withTimeout(s.realpath('.'), opTimeout, execTimeoutMsg())).replace(/\\/g, '/');
 
   const runner = {
     runPs,
@@ -186,8 +202,8 @@ async function connect(opts, log = () => {}) {
     exists: async p => {
       try { await s.stat(p); return true; } catch { return false; }
     },
-    readFile: async p => (await withTimeout(s.readFile(p), opTimeout, 'SFTP 读取文件')).toString('utf8'),
-    readdir: async p => (await withTimeout(s.readdir(p), opTimeout, 'SFTP 列目录')).map(e => e.filename),
+    readFile: async p => (await withTimeout(s.readFile(p), opTimeout, execTimeoutMsg())).toString('utf8'),
+    readdir: async p => (await withTimeout(s.readdir(p), opTimeout, execTimeoutMsg())).map(e => e.filename),
     // '~' is a shell-ism; SFTP needs it resolved to the login directory.
     normalizeRemotePath(p) {
       let sPath = String(p || '').trim();

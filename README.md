@@ -39,8 +39,8 @@ A fully visual desktop app (light/dark, 简体中文/English/日本語) on the s
 - **Any target, local or SSH** — scan this machine, a local folder, or a remote Windows/Linux host over SSH with live progress.
 - **红黄绿结果页** — verdict banner, per-section counts, status filter chips, one-click copy of any recommendation.
 - **SSH connection manager** — multiple saved hosts, password or private key (secrets encrypted with the OS credential store, never plaintext), host-key fingerprint pinning (TOFU) that hard-stops on change, connectivity test, import/export.
-- **体检历史** — every check is saved locally; open an old report and diff it against the previous run (新增 / 已解决).
-- **创建试跑 PR** — after a local CI check, one click opens a PR that pins `ubuntu-26.04`, so CI itself proves the migration.
+- **体检历史** — every check is saved locally; open an old report and diff it against the previous run (new / changed / resolved).
+- **创建试跑 PR / 生成修复 YAML** — after a local CI check, one click opens a PR pinning `ubuntu-26.04`, or rewrites the workflow files locally.
 - **Auto-update** — background check, silent download, one-click restart (GitHub Releases).
 - **Trilingual UI** — 简体中文 / English / 日本語, switchable in-app; exports follow the UI language.
 - Export reports as **HTML** (localized), Markdown, or JSON.
@@ -72,6 +72,8 @@ One-click trial — prove the migration before the flip:
 
 ```bash
 switchcheck ci --trial          # creates a branch pinning ubuntu-26.04 and opens a PR (via gh)
+switchcheck ci --fix --dry-run  # preview the same rewrite as a local diff
+switchcheck ci --fix            # rewrite the workflows in place (git diff to review)
 switchcheck ci --fail-on red    # exit 1 for CI
 ```
 
@@ -126,7 +128,6 @@ docs/ui-design-spec.md  the GUI design system & usability plan
 
 - Publish to npm + GitHub Action marketplace entry
 - The same engine against the **Windows 2025** image flip and macOS runner changes
-- `--fix` mode: emit the upgraded workflow YAML, not just advice
 - Crowdsource KB coverage from anonymized `--json` output
 
 ## 中文说明

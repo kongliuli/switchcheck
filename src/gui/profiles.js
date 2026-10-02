@@ -8,6 +8,14 @@
 
 const fs = require('fs');
 const path = require('path');
+const L = require('../labels');
+
+function errMsg(lang, key, map) {
+  const table = (L.LANGS.includes(lang) ? L.STR[lang] : L.STR.zh).ui;
+  let s = table[key] || key;
+  if (map) s = s.replace(/\{(\w+)\}/g, (_, k) => (map[k] !== undefined ? map[k] : ''));
+  return s;
+}
 
 class ProfileStore {
   constructor({ dir, safeStorage }) {
@@ -181,7 +189,7 @@ class ProfileStore {
       };
     }
     const p = this._load().find(x => x.id === opts.profileId);
-    if (!p) throw new Error('找不到该 SSH 连接配置，请重新选择或新建。');
+    if (!p) throw new Error(errMsg(opts.lang, 'errProfileMissing'));
     return {
       host: p.host,
       port: p.port,

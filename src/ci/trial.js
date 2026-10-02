@@ -100,4 +100,30 @@ function runTrial(root, { dryRun = false, log = () => {} } = {}) {
   };
 }
 
-module.exports = { runTrial, planRewrites };
+// `switchcheck ci --fix`: apply the same rewrite directly to the working
+// tree (no branch, no commit) — the local counterpart of --trial.
+function runFix(root, { dryRun = false, log = () => {} } = {}) {
+  const rewrites = planRewrites(root);
+  if (!rewrites.length) {
+    return { ok: false, reason: 'no-change',
+      message: 'No ubuntu-latest / ubuntu-24.04 labels found in .github/workflows — nothing to fix.' };
+  }
+
+  if (dryRun) {
+    for (const r of rewrites) {
+      const before = r.before.split('\n').filter(l => /runs-on/.test(l)).join(' | ');
+      const after = r.after.split('\n').filter(l => /runs-on/.test(l)).join(' | ');
+      log(`${r.rel}\n    - ${before}\n    + ${after}`);
+    }
+    return { ok: true, dryRun: true, rewrites: rewrites.length,
+      message: `${rewrites.length} file(s) would be rewritten. Pass --fix without --dry-run to apply.` };
+  }
+
+  for (const r of rewrites) fs.writeFileSync(r.abs, r.after);
+  const summary = rewrites.map(r => `  ${r.rel}`).join('\n');
+  log(`Rewrote:\n${summary}\nReview with git diff; undo with git checkout.`);
+  return { ok: true, rewrites: rewrites.length,
+    message: `Rewrote ${rewrites.length} workflow file(s) in place. Review with git diff, commit when satisfied.` };
+}
+
+module.exports = { runTrial, runFix, planRewrites };

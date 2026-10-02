@@ -160,7 +160,7 @@ async function run() {
   }
   hideError();
   state.running = true;
-  const lockable = ['#exportHtml', '#exportMd', '#exportJson', '#trialBtn', '#historyBtn', '#manageBtn', '#ciBrowseBtn'];
+  const lockable = ['#exportHtml', '#exportMd', '#exportJson', '#trialBtn', '#fixBtn', '#historyBtn', '#manageBtn', '#ciBrowseBtn'];
   lockable.forEach(s => { $(s).disabled = true; });
   const btn = $('#runBtn');
   btn.disabled = true;
@@ -252,6 +252,7 @@ function renderResult(result, opts = {}) {
   updateChipCounts(c);
 
   $('#trialBtn').hidden = !(result.kind === 'ci' && state.target === 'local' && !opts.fromHistory);
+  $('#fixBtn').hidden = $('#trialBtn').hidden;
 
   const wrap = $('#sections');
   wrap.textContent = '';
@@ -375,6 +376,22 @@ async function runTrialFromGui() {
   });
 }
 
+async function runFixFromGui() {
+  if (!state.lastOpts || state.lastOpts.type !== 'ci') return;
+  const ok = await confirmDialog({
+    title: t('fixConfirmTitle'),
+    message: t('fixConfirmMsg'),
+    confirmText: t('fixConfirmOk'),
+    danger: true,
+  });
+  if (!ok) return;
+  const res = await window.api.runFix({
+    ciPath: state.lastOpts.ciPath || '.',
+    dryRun: false,
+  });
+  if (res && res.message) progressLine(res.message, res.ok ? 'ok' : undefined);
+}
+
 // ------------------------------------------------------- history + diff --
 
 function diffAgainst(prevResult, curResult) {
@@ -384,13 +401,16 @@ function diffAgainst(prevResult, curResult) {
   const curMap = new Map(curAll.map(f => [key(f), f]));
   const fresh = curAll.filter(f => (f.status === 'red' || f.status === 'yellow') && !prevMap.has(key(f)));
   const resolved = [...prevMap.values()].filter(f => (f.status === 'red' || f.status === 'yellow') && !curMap.has(key(f)));
-  return { fresh, resolved };
+  const changed = curAll
+    .filter(f => prevMap.has(key(f)) && prevMap.get(key(f)).status !== f.status)
+    .map(f => ({ title: f.title, from: prevMap.get(key(f)).status, to: f.status }));
+  return { fresh, resolved, changed };
 }
 
 function diffHtml(prevAt, diff) {
   const box = el('div');
   box.append(el('div', 'diff-head', fmt(t('diffHead'), {
-    date: prevAt.slice(0, 10), n: diff.fresh.length, m: diff.resolved.length,
+    date: prevAt.slice(0, 10), n: diff.fresh.length, m: diff.resolved.length, k: diff.changed.length,
   })));
   const list = el('div', 'diff-list');
   for (const f of diff.fresh.slice(0, 10)) {
@@ -399,12 +419,18 @@ function diffHtml(prevAt, diff) {
     row.append(el('span', null, fmt(t('diffNew'), { title: f.title })));
     list.append(row);
   }
+  for (const c of diff.changed.slice(0, 10)) {
+    const row = el('div', 'diff-row');
+    row.append(el('span', `badge ${c.to}`, T.status[c.to]));
+    row.append(el('span', null, `${c.title}（${T.status[c.from]} → ${T.status[c.to]}）`));
+    list.append(row);
+  }
   for (const f of diff.resolved.slice(0, 10)) {
     const row = el('div', 'diff-row resolved');
     row.append(el('span', null, `✓ ${f.title}`));
     list.append(row);
   }
-  if (diff.fresh.length || diff.resolved.length) box.append(list);
+  if (diff.fresh.length || diff.resolved.length || diff.changed.length) box.append(list);
   return box;
 }
 
@@ -795,6 +821,7 @@ function bind() {
   });
   $('#runBtn').addEventListener('click', run);
   $('#trialBtn').addEventListener('click', runTrialFromGui);
+  $('#fixBtn').addEventListener('click', runFixFromGui);
   $('#filterChips').addEventListener('click', e => {
     const b = e.target.closest('button');
     if (b) setFilter(b.dataset.f);

@@ -14,6 +14,7 @@ contextBridge.exposeInMainWorld('api', {
   startCheck: opts => ipcRenderer.invoke('check:start', opts),
   sshTest: opts => ipcRenderer.invoke('ssh:test', opts),
   runTrial: req => ipcRenderer.invoke('trial:run', req),
+  runFix: req => ipcRenderer.invoke('fix:run', req),
   onProgress: cb => ipcRenderer.on('check:progress', (_e, msg) => cb(msg)),
 
   historyList: () => ipcRenderer.invoke('history:list'),

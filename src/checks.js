@@ -22,10 +22,10 @@ const VERSION = require('../package.json').version;
 
 const fmt = (s, m) => String(s).replace(/\{(\w+)\}/g, (_, k) => (m[k] !== undefined ? m[k] : ''));
 
-// Stage messages follow the UI language (opts.lang, zh default).
-function stageFor(opts) {
+// Stage messages and error strings follow the UI language (opts.lang, zh default).
+function langTable(opts) {
   const lang = opts && L.LANGS.includes(opts.lang) ? opts.lang : 'zh';
-  return L.STR[lang].stage;
+  return L.STR[lang];
 }
 
 function finishResult(kind, hostLabel, title, sections, extraMeta = {}) {
@@ -48,7 +48,7 @@ function finishResult(kind, hostLabel, title, sections, extraMeta = {}) {
 
 async function runLinuxCheck(opts = {}, deps = {}) {
   const send = deps.send || (() => {});
-  const stage = stageFor(opts);
+  const T = langTable(opts); const stage = T.stage;
   const kbs = loadKbs();
   let machine;
   if (opts.target === 'ssh') {
@@ -58,7 +58,7 @@ async function runLinuxCheck(opts = {}, deps = {}) {
     try {
       if (deps.afterConnect) deps.afterConnect(conn, opts);
       if (await conn.detectPlatform() !== 'windows') {
-        throw new Error('SSH 目标不是 Windows 主机 — Windows→Linux 迁移体检需要扫描 Windows 机器。');
+        throw new Error(T.ui.errNotWindows);
       }
       machine = await collect.collectAll(conn, step => send('collect', fmt(stage.remoteCollect, { label: stage.steps[step] })));
     } finally {
@@ -68,7 +68,7 @@ async function runLinuxCheck(opts = {}, deps = {}) {
     // The local scan is Windows PowerShell through and through; on a mac or
     // Linux desktop it can't run — point the user at the SSH mode instead.
     if ((deps.platform || process.platform) !== 'win32') {
-      throw new Error('本机体检仅支持 Windows。在 macOS / Linux 上请选择「SSH 远程 Windows 主机」来体检那台 Windows 电脑。');
+      throw new Error(T.ui.errLocalWinOnly);
     }
     machine = await collect.collectAll(collect.localRunner, step => send('collect', fmt(stage.localCollect, { label: stage.steps[step] })));
   }
@@ -81,7 +81,7 @@ async function runLinuxCheck(opts = {}, deps = {}) {
 
 async function runCiCheck(opts = {}, deps = {}) {
   const send = deps.send || (() => {});
-  const stage = stageFor(opts);
+  const T = langTable(opts); const stage = T.stage;
   const kb = ciCheck.loadKb();
   const root = opts.target === 'ssh'
     ? String(opts.remotePath || '~').trim()
@@ -102,12 +102,12 @@ async function runCiCheck(opts = {}, deps = {}) {
     }
   } else {
     if (!fs.existsSync(path.join(root, '.github', 'workflows'))) {
-      throw new Error(`${root} 下没有找到 .github/workflows 目录。`);
+      throw new Error(fmt(T.ui.errNoWorkflowsDir, { root }));
     }
     scan = await ciScan.scanRepo(root);
   }
   if (!scan.workflows.length) {
-    throw new Error(`${root} 下没有找到任何 workflow 文件(.github/workflows/*.yml)。`);
+    throw new Error(fmt(T.ui.errNoWorkflows, { root }));
   }
   send('match', stage.matchCi);
   const sections = ciCheck.checkScan(scan, kb);
@@ -117,7 +117,7 @@ async function runCiCheck(opts = {}, deps = {}) {
 
 async function runRuntimeCheck(opts = {}, deps = {}) {
   const send = deps.send || (() => {});
-  const stage = stageFor(opts);
+  const T = langTable(opts); const stage = T.stage;
   const kb = runtimeCheck.loadKb();
   const root = opts.target === 'ssh'
     ? String(opts.remotePath || '~').trim()

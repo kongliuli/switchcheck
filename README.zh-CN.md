@@ -39,8 +39,8 @@ npm run gui
 - **任意目标，本机或 SSH** —— 体检本机、本地文件夹，或通过 SSH 体检远程 Windows/Linux 主机，进度实时可见。
 - **红黄绿结果页** —— 结论横幅、分区计数、状态过滤芯片、一键复制任何建议。
 - **SSH 连接管理器** —— 保存多台主机，密码或私钥（密钥经操作系统级加密存储，绝不落盘明文），主机密钥指纹绑定（TOFU，变更即拦截），连通性测试，导入导出。
-- **体检历史** —— 每次体检自动存本地；打开旧报告，与上一次对比（新增 / 已解决）。
-- **创建试跑 PR** —— 本地 CI 体检完成后，一键开 PR 把 job 钉到 `ubuntu-26.04`，让 CI 自己证明迁移可行。
+- **体检历史** —— 每次体检自动存本地；打开旧报告，与上一次对比（新增 / 状态变化 / 已解决）。
+- **创建试跑 PR / 生成修复 YAML** —— 本地 CI 体检完成后，一键开 PR 把 job 钉到 `ubuntu-26.04`，或就地改写 workflow 文件。
 - **自动更新** —— 后台检查、静默下载、一键重启（GitHub Releases）。
 - **三语界面** —— 简体中文 / English / 日本語，应用内一键切换；导出报告跟随界面语言。
 - 任何报告可导出为中文 **HTML**、Markdown 或 JSON。
@@ -72,6 +72,8 @@ npm install -g switchcheck    # 或：npx switchcheck <command>
 
 ```bash
 switchcheck ci --trial          # 创建把 ubuntu-26.04 钉死的分支并开 PR（经 gh）
+switchcheck ci --fix --dry-run  # 以本地 diff 形式预览同样的改写
+switchcheck ci --fix            # 就地改写 workflow 文件（git diff 查看）
 switchcheck ci --fail-on red    # 供 CI 使用，存在红灯则退出码 1
 ```
 
@@ -126,7 +128,6 @@ docs/ui-design-spec.md  GUI 设计系统与易用性计划
 
 - 发布到 npm + GitHub Action 市场
 - 同一引擎支持 **Windows 2025** 镜像切换与 macOS runner 变化
-- `--fix` 模式：直接产出升级后的 workflow YAML
 - 从匿名化的 `--json` 输出众包知识库覆盖
 
 ## License

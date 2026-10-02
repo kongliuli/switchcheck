@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data:">
 <title>SwitchCheck — 换环境体检</title>
 <script src="theme-init.js"></script>
 <link rel="stylesheet" href="app.css">
@@ -12,7 +12,7 @@
 
   <aside id="sidebar">
     <div class="brand">
-      <div class="logo">🚦</div>
+      <div class="logo"><img src="assets/icon.png" alt="SwitchCheck"></div>
       <div>
         <div class="name">SwitchCheck</div>
         <div class="tagline" data-i18n="tagline"></div>
@@ -172,6 +172,7 @@
           <button data-f="info" aria-pressed="false"><span class="dot info"></span><span data-i18n-status="info"></span><b class="count">0</b></button>
         </div>
         <div class="exports">
+          <button id="fixBtn" class="primary" hidden data-i18n="fixBtn" data-i18n-title="fixTitle"></button>
           <button id="trialBtn" class="primary" hidden data-i18n="trialBtn" data-i18n-title="trialTitle"></button>
           <button id="exportHtml" class="ghost" data-i18n="exportHtml"></button>
           <button id="exportMd" class="ghost" data-i18n="exportMd"></button>

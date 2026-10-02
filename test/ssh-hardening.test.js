@@ -44,10 +44,19 @@ test('friendlySshError maps raw ssh2/network errors to plain Chinese', () => {
   assert.equal(friendlySshError(new Error('weird')), 'weird');
 });
 
-test('withTimeout: resolves under the limit, rejects past it', async () => {
-  await assert.doesNotReject(withTimeout(Promise.resolve('ok'), 1000, '测试'));
+test('withTimeout: resolves under the limit, rejects with the given message past it', async () => {
+  await assert.doesNotReject(withTimeout(Promise.resolve('ok'), 1000, 'boom'));
   await assert.rejects(
-    withTimeout(new Promise(() => {}), 30, '远程操作'),
+    withTimeout(new Promise(() => {}), 30, '远程操作超时（0.03s）'),
     /远程操作超时/,
   );
+});
+
+test('friendlySshError localizes per language', () => {
+  const e = new Error('connect ECONNREFUSED 1.2.3.4:22');
+  assert.match(friendlySshError(e, 'zh'), /OpenSSH 服务器/);
+  assert.match(friendlySshError(e, 'en'), /OpenSSH Server/);
+  assert.match(friendlySshError(e, 'ja'), /OpenSSH Server/);
+  // unknown language falls back to Chinese
+  assert.match(friendlySshError(e, 'xx'), /OpenSSH 服务器/);
 });

@@ -9,7 +9,7 @@ const markdown = require('./report/markdown');
 const html = require('./report/html');
 const ciScan = require('./ci/scan');
 const ciCheck = require('./ci/check');
-const { runTrial } = require('./ci/trial');
+const { runTrial, runFix } = require('./ci/trial');
 const collect = require('./desktop/collect');
 const { checkMachine, loadKbs } = require('./desktop/check');
 const runtimeScan = require('./runtime/scan');
@@ -23,6 +23,7 @@ function parseArgs(argv) {
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--trial') flags.trial = true;
+    else if (a === '--fix') flags.fix = true;
     else if (a === '--dry-run') flags.dryRun = true;
     else if (a === '--json') flags.json = true;
     else if (a === '--md') flags.md = argv[++i];
@@ -103,6 +104,15 @@ async function cmdCi(positionals, flags) {
     }
     if (res.message) process.stdout.write(`\n${res.message}\n`);
   }
+
+  if (flags.fix) {
+    const res = runFix(root, { dryRun: flags.dryRun, log: m => process.stdout.write(m + '\n') });
+    if (!res.ok && res.reason !== 'no-change') {
+      process.stderr.write(`Fix failed: ${res.message}\n`);
+      return 2;
+    }
+    if (res.message) process.stdout.write(`\n${res.message}\n`);
+  }
   return exitCodeFor(sections, flags.failOn);
 }
 
@@ -167,7 +177,8 @@ const HELP = `switchcheck ${VERSION} — pre-flight checks before you switch env
 Usage:
   switchcheck ci [path]        Scan GitHub Actions workflows for Ubuntu 26.04 readiness
     --trial                    Also create a branch (and PR via gh) pinning ubuntu-26.04
-    --dry-run                  Preview the --trial rewrites without touching git
+    --fix                      Rewrite ubuntu-latest/24.04 to ubuntu-26.04 in place
+    --dry-run                  Preview the --trial / --fix rewrites without touching git
     --json                     Machine-readable JSON instead of terminal+markdown
     --md <file> / --no-md      Markdown report path / disable (default: ./switchcheck-ci-report.md)
     --fail-on red|yellow       Exit 1 when findings at this level exist

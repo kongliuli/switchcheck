@@ -13,7 +13,7 @@ const { runCheck } = require('../checks');
 const ssh = require('../ssh');
 const html = require('../report/html');
 const markdown = require('../report/markdown');
-const { runTrial } = require('../ci/trial');
+const { runTrial, runFix } = require('../ci/trial');
 const { autoUpdater } = require('electron-updater');
 
 const VERSION = require('../../package.json').version;
@@ -56,9 +56,17 @@ function createWindow() {
     ]));
   }
 
+  // restore size/position from the last session when sane
+  let bounds = {};
+  try {
+    const s = JSON.parse(fs.readFileSync(path.join(app.getPath('userData'), 'window-state.json'), 'utf8'));
+    if (s.width >= 940 && s.height >= 620 && s.x > -9000 && s.y > -9000) bounds = { x: s.x, y: s.y, width: s.width, height: s.height };
+  } catch { /* first run */ }
+
   win = new BrowserWindow({
-    width: 1200,
-    height: 800,
+    ...bounds,
+    width: bounds.width || 1200,
+    height: bounds.height || 800,
     minWidth: 940,
     minHeight: 620,
     title: 'SwitchCheck — 换环境体检',
@@ -73,6 +81,14 @@ function createWindow() {
   });
   if (process.platform !== 'darwin') win.removeMenu();
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+
+  // remember size/position for the next session
+  win.on('close', () => {
+    try {
+      fs.writeFileSync(path.join(app.getPath('userData'), 'window-state.json'),
+        JSON.stringify({ ...win.getBounds(), maximized: win.isMaximized() }));
+    } catch { /* best effort */ }
+  });
 
   // --smoke: load the renderer, report, exit. Headless sanity check.
   if (process.argv.includes('--smoke')) {
@@ -263,6 +279,20 @@ ipcMain.handle('shell:openExternal', (_e, url) => {
 });
 
 ipcMain.handle('app:version', () => VERSION);
+
+// ------------------------------------------------------------------- fix --
+
+// Local counterpart of --trial: rewrite the workflow files in place.
+ipcMain.handle('fix:run', (event, { ciPath, dryRun }) => {
+  const send = m => {
+    if (!event.sender.isDestroyed()) event.sender.send('check:progress', { stage: 'fix', message: m, at: Date.now() });
+  };
+  try {
+    return runFix(ciPath, { dryRun: !!dryRun, log: send });
+  } catch (e) {
+    return { ok: false, message: e.message || String(e) };
+  }
+});
 
 // ------------------------------------------------------------------ update --
 

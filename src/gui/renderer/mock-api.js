@@ -171,6 +171,13 @@ if (!window.api) {
       await sleep(250);
       return opts.type === 'ci' ? SAMPLE_CI : opts.type === 'runtime' ? SAMPLE_RUNTIME : SAMPLE_LINUX;
     },
+    async runFix(req) {
+      await sleep(300);
+      window.api.__emit({ stage: 'fix', message: req.dryRun ? '[preview] rewrite runs-on lines' : 'Rewrote:' });
+      await sleep(300);
+      if (!req.dryRun) window.api.__emit({ stage: 'fix', message: '  .github/workflows/ci.yml' });
+      return { ok: true, rewrites: 1, message: 'Rewrote 1 workflow file(s) in place. Review with git diff, commit when satisfied.' };
+    },
     async runTrial(req) {
       await sleep(400);
       window.api.__emit({ stage: 'trial', message: `${req.dryRun ? '[预览] ' : ''}重写 .github/workflows/ci.yml:ubuntu-latest → ubuntu-26.04` });
